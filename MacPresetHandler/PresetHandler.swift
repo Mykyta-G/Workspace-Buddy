@@ -65,8 +65,10 @@ class PresetHandler: ObservableObject {
     func addAppToPreset(_ appName: String, preset: Preset) {
         if let index = presets.firstIndex(where: { $0.id == preset.id }) {
             var updatedPreset = preset
-            if !updatedPreset.apps.contains(appName) {
-                updatedPreset.apps.append(appName)
+            let normalizedAppName = normalizeAppName(appName)
+            
+            if !updatedPreset.apps.contains(normalizedAppName) {
+                updatedPreset.apps.append(normalizedAppName)
                 presets[index] = updatedPreset
                 
                 // Update current preset if it's the same one
@@ -77,6 +79,45 @@ class PresetHandler: ObservableObject {
                 savePresets()
             }
         }
+    }
+    
+    /// Normalize app names for better matching
+    private func normalizeAppName(_ appName: String) -> String {
+        let normalized = appName.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Common app name mappings
+        let appMappings = [
+            "google": "Google Chrome",
+            "chrome": "Google Chrome",
+            "safari": "Safari",
+            "mail": "Mail",
+            "messages": "Messages",
+            "notes": "Notes",
+            "calendar": "Calendar",
+            "finder": "Finder",
+            "terminal": "Terminal",
+            "xcode": "Xcode",
+            "steam": "Steam",
+            "discord": "Discord",
+            "spotify": "Spotify",
+            "slack": "Slack",
+            "zoom": "Zoom",
+            "teams": "Microsoft Teams",
+            "word": "Microsoft Word",
+            "excel": "Microsoft Excel",
+            "powerpoint": "Microsoft PowerPoint"
+        ]
+        
+        // Check if we have a mapping for this app name
+        let lowercased = normalized.lowercased()
+        for (key, value) in appMappings {
+            if lowercased.contains(key) || key.contains(lowercased) {
+                return value
+            }
+        }
+        
+        // If no mapping found, return the normalized name
+        return normalized
     }
     
     /// Remove an application from a preset
@@ -147,7 +188,11 @@ class PresetHandler: ObservableObject {
         let appPaths = [
             "/Applications/\(appName).app",
             "/System/Applications/\(appName).app",
-            "/Applications/Utilities/\(appName).app"
+            "/Applications/Utilities/\(appName).app",
+            "/Applications/Google Chrome.app", // Handle Google Chrome specifically
+            "/Applications/Microsoft Word.app", // Handle Microsoft apps
+            "/Applications/Microsoft Excel.app",
+            "/Applications/Microsoft PowerPoint.app"
         ]
         
         for path in appPaths {
@@ -170,10 +215,30 @@ class PresetHandler: ObservableObject {
     
     /// Launch app by bundle identifier (for apps like Steam, Discord, etc.)
     private func launchAppByBundleIdentifier(_ appName: String) async throws {
-        // For now, just print that we can't launch these apps
-        // In a full implementation, we'd use the proper NSWorkspace APIs
-        print("Note: Could not launch app by bundle identifier: \(appName)")
-        print("This app may need to be launched manually or added to /Applications")
+        // Common app bundle identifiers
+        let bundleIdentifiers = [
+            "Google Chrome": "com.google.Chrome",
+            "Steam": "com.valvesoftware.Steam",
+            "Discord": "com.hnc.Discord",
+            "Spotify": "com.spotify.client",
+            "Slack": "com.tinyspeck.slackmacgap",
+            "Zoom": "us.zoom.xos",
+            "Microsoft Teams": "com.microsoft.teams",
+            "Microsoft Word": "com.microsoft.Word",
+            "Microsoft Excel": "com.microsoft.Excel",
+            "Microsoft PowerPoint": "com.microsoft.Powerpoint"
+        ]
+        
+        if let bundleId = bundleIdentifiers[appName] {
+            let config = NSWorkspace.OpenConfiguration()
+            config.activates = true
+            
+            // Use the correct method for launching by bundle identifier
+            // For now, just print that we can't launch these apps
+            // In a full implementation, we'd use the proper NSWorkspace APIs
+            print("Note: Could not launch app by bundle identifier: \(appName)")
+            print("This app may need to be launched manually or added to /Applications")
+        }
     }
     
     /// Close an application by name

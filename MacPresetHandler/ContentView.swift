@@ -98,7 +98,7 @@ struct ContentView: View {
             LazyVStack(spacing: 8) {
                 ForEach(presetHandler.presets) { preset in
                     PresetRowView(
-                        preset: preset,
+                        presetId: preset.id,
                         isCurrent: presetHandler.currentPreset?.id == preset.id,
                         isLoading: presetHandler.isLoading,
                         onSwitch: {
@@ -112,7 +112,8 @@ struct ContentView: View {
                         onDelete: {
                             presetToDelete = preset
                             showingDeleteAlert = true
-                        }
+                        },
+                        presetHandler: presetHandler
                     )
                 }
             }
@@ -147,155 +148,258 @@ struct ContentView: View {
 // MARK: - Preset Row View
 
 struct PresetRowView: View {
-    let preset: Preset
+    let presetId: UUID // Use ID instead of preset object
     let isCurrent: Bool
     let isLoading: Bool
     let onSwitch: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
+    let presetHandler: PresetHandler
     
     @State private var isExpanded = false
     @State private var newAppName = ""
     @State private var showingAddApp = false
+    @State private var searchResults: [String] = []
     
-    // We need access to the PresetHandler to add apps
-    @EnvironmentObject var presetHandler: PresetHandler
+    // Get the current preset data from the handler
+    private var preset: Preset? {
+        presetHandler.presets.first { $0.id == presetId }
+    }
     
-    var body: some View {
-        VStack(spacing: 0) {
-            // Main preset row
-            HStack(spacing: 12) {
-                // Icon and preset info
-                HStack(spacing: 8) {
-                    Image(systemName: preset.icon ?? "folder")
-                        .foregroundColor(isCurrent ? .green : .blue)
-                        .font(.title3)
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(preset.name)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundColor(isCurrent ? .primary : .secondary)
-                        
-                        Text(preset.description)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
+    // MARK: - Search Function
+    
+    private func searchApps(query: String) {
+        let searchQuery = query.lowercased()
+        let allApps = getAllInstalledApps()
+        
+        searchResults = allApps.filter { appName in
+            appName.lowercased().contains(searchQuery)
+        }.sorted()
+    }
+    
+    private func getAllInstalledApps() -> [String] {
+        var apps: [String] = []
+        
+        // System Applications
+        let systemPaths = [
+            "/System/Applications",
+            "/Applications",
+            "/Applications/Utilities"
+        ]
+        
+        for path in systemPaths {
+            if let contents = try? FileManager.default.contentsOfDirectory(atPath: path) {
+                for item in contents {
+                    if item.hasSuffix(".app") {
+                        let appName = String(item.dropLast(4)) // Remove .app extension
+                        apps.append(appName)
                     }
                 }
-                
-                Spacer()
-                
-                // Status indicator
-                if isCurrent {
-                    Text("ACTIVE")
-                        .font(.caption2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.green)
-                        .cornerRadius(4)
-                }
-                
-                // Action buttons
-                HStack(spacing: 6) {
-                    Button(action: { isExpanded.toggle() }) {
-                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                            .font(.body)
-                            .foregroundColor(.blue)
-                            .frame(width: 24, height: 24)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    
-                    Button(action: onDelete) {
-                        Image(systemName: "trash")
-                            .font(.caption)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .foregroundColor(.red)
-                    
-                    Button(isCurrent ? "Current" : "Switch") {
-                        onSwitch()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .disabled(isCurrent || isLoading)
-                    
-                    if isLoading && isCurrent {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                    }
-                }
-            }
-            .padding(12)
-            .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-            .cornerRadius(8)
-            
-            // Expandable apps section
-            if isExpanded {
-                VStack(spacing: 8) {
-                    // Apps list
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text("Applications")
-                                .font(.caption)
-                                .fontWeight(.medium)
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Text("\(preset.apps.count) apps")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        // Apps grid
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 6) {
-                            ForEach(preset.apps, id: \.self) { app in
-                                HStack {
-                                    Image(systemName: "app.badge")
-                                        .font(.caption2)
-                                        .foregroundColor(.blue)
-                                    Text(app)
-                                        .font(.caption)
-                                        .lineLimit(1)
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.blue.opacity(0.1))
-                                .cornerRadius(4)
-                            }
-                        }
-                    }
-                    
-                    // Add new app section
-                    HStack {
-                        TextField("Add app...", text: $newAppName)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .font(.caption)
-                        
-                        Button("Add") {
-                            if !newAppName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                let appName = newAppName.trimmingCharacters(in: .whitespacesAndNewlines)
-                                presetHandler.addAppToPreset(appName, preset: preset)
-                                newAppName = ""
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                        .disabled(newAppName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }
-                }
-                .padding(12)
-                .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
-                .cornerRadius(8)
-                .transition(.asymmetric(
-                    insertion: .scale(scale: 0.95).combined(with: .opacity),
-                    removal: .scale(scale: 0.95).combined(with: .opacity)
-                ))
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: isExpanded)
+        
+        return apps.sorted()
+    }
+    
+    var body: some View {
+        if let preset = preset {
+            VStack(spacing: 0) {
+                // Main preset row - now clickable to expand/collapse
+                Button(action: { 
+                    isExpanded.toggle()
+                    if !isExpanded {
+                        // Clear search when closing
+                        newAppName = ""
+                        searchResults = []
+                    }
+                }) {
+                    HStack(spacing: 12) {
+                        // Icon and preset info
+                        HStack(spacing: 8) {
+                            Image(systemName: preset.icon ?? "folder")
+                                .foregroundColor(isCurrent ? .green : .blue)
+                                .font(.title3)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(preset.name)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(isCurrent ? .primary : .secondary)
+                                
+                                Text(preset.description)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        // Status indicator
+                        if isCurrent {
+                            Text("ACTIVE")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.green)
+                                .cornerRadius(4)
+                        }
+                        
+                        // Action buttons
+                        HStack(spacing: 6) {
+                            // Chevron indicator (no longer a button, just visual)
+                            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                                .font(.body)
+                                .foregroundColor(.blue)
+                                .frame(width: 24, height: 24)
+                            
+                            Button(action: onDelete) {
+                                Image(systemName: "trash")
+                                    .font(.caption)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .foregroundColor(.red)
+                            
+                            Button(isCurrent ? "Current" : "Switch") {
+                                onSwitch()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                            .disabled(isCurrent || isLoading)
+                            
+                            if isLoading && isCurrent {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                            }
+                        }
+                    }
+                    .padding(12)
+                    .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+                    .cornerRadius(8)
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                // Expandable apps section
+                if isExpanded {
+                    VStack(spacing: 12) {
+                        // Apps list
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Applications")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Text("\(preset.apps.count) apps")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            // Apps list with remove buttons
+                            VStack(spacing: 6) {
+                                ForEach(preset.apps, id: \.self) { app in
+                                    HStack {
+                                        Image(systemName: "app.badge")
+                                            .font(.caption2)
+                                            .foregroundColor(.blue)
+                                        Text(app)
+                                            .font(.caption)
+                                            .lineLimit(1)
+                                        Spacer()
+                                        
+                                        Button(action: {
+                                            presetHandler.removeAppFromPreset(app, preset: preset)
+                                        }) {
+                                            Image(systemName: "trash")
+                                                .font(.caption2)
+                                                .foregroundColor(.red)
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                    }
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 6)
+                                    .background(Color.blue.opacity(0.1))
+                                    .cornerRadius(6)
+                                }
+                            }
+                        }
+                        
+                        // Add new app section with smooth search
+                        VStack(spacing: 8) {
+                            HStack {
+                                TextField("Search for app...", text: $newAppName)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .font(.caption)
+                                    .onChange(of: newAppName) { _, newValue in
+                                        // Trigger search as user types
+                                        if !newValue.isEmpty {
+                                            searchApps(query: newValue)
+                                        }
+                                    }
+                                
+                                Button("Add") {
+                                    if !newAppName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                        let appName = newAppName.trimmingCharacters(in: .whitespacesAndNewlines)
+                                        presetHandler.addAppToPreset(appName, preset: preset)
+                                        newAppName = ""
+                                    }
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.small)
+                                .disabled(newAppName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            }
+                            
+                            // Search results
+                            if !newAppName.isEmpty && !searchResults.isEmpty {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Found apps:")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                    
+                                    ForEach(searchResults.prefix(5), id: \.self) { appName in
+                                        Button(action: {
+                                            print("Adding app: \(appName) to preset: \(preset.name)")
+                                            presetHandler.addAppToPreset(appName, preset: preset)
+                                            newAppName = ""
+                                            searchResults = []
+                                        }) {
+                                            HStack {
+                                                Image(systemName: "app.badge")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.blue)
+                                                Text(appName)
+                                                    .font(.caption)
+                                                    .foregroundColor(.primary)
+                                                Spacer()
+                                            }
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(Color.blue.opacity(0.1))
+                                            .cornerRadius(4)
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .padding(12)
+                    .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
+                    .cornerRadius(8)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.95).combined(with: .opacity),
+                        removal: .scale(scale: 0.95).combined(with: .opacity)
+                    ))
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: isExpanded)
+        } else {
+            // Fallback if preset not found
+            Text("Preset not found")
+                .foregroundColor(.red)
+        }
     }
 }
 
