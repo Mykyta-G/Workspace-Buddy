@@ -61,6 +61,40 @@ class PresetHandler: ObservableObject {
         savePresets()
     }
     
+    /// Add an application to a preset
+    func addAppToPreset(_ appName: String, preset: Preset) {
+        if let index = presets.firstIndex(where: { $0.id == preset.id }) {
+            var updatedPreset = preset
+            if !updatedPreset.apps.contains(appName) {
+                updatedPreset.apps.append(appName)
+                presets[index] = updatedPreset
+                
+                // Update current preset if it's the same one
+                if currentPreset?.id == preset.id {
+                    currentPreset = updatedPreset
+                }
+                
+                savePresets()
+            }
+        }
+    }
+    
+    /// Remove an application from a preset
+    func removeAppFromPreset(_ appName: String, preset: Preset) {
+        if let index = presets.firstIndex(where: { $0.id == preset.id }) {
+            var updatedPreset = preset
+            updatedPreset.apps.removeAll { $0 == appName }
+            presets[index] = updatedPreset
+            
+            // Update current preset if it's the same one
+            if currentPreset?.id == preset.id {
+                currentPreset = updatedPreset
+            }
+            
+            savePresets()
+        }
+    }
+    
     // MARK: - Workspace Switching
     
     /// Switch to a specific preset
