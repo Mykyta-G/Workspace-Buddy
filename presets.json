@@ -1,0 +1,45 @@
+{
+  "Work": {
+    "description": "Productivity and development workspace",
+    "apps": [
+      "Safari",
+      "Xcode",
+      "Terminal",
+      "Slack",
+      "Notes"
+    ],
+    "close_previous": true
+  },
+  "School": {
+    "description": "Educational and learning workspace",
+    "apps": [
+      "Safari",
+      "Pages",
+      "Keynote",
+      "Numbers",
+      "Mail"
+    ],
+    "close_previous": true
+  },
+  "Gaming": {
+    "description": "Gaming and entertainment workspace",
+    "apps": [
+      "Steam",
+      "Discord",
+      "Spotify",
+      "Safari"
+    ],
+    "close_previous": false
+  },
+  "Relax": {
+    "description": "Relaxation and social media workspace",
+    "apps": [
+      "Safari",
+      "Messages",
+      "Photos",
+      "Music",
+      "TV"
+    ],
+    "close_previous": false
+  }
+}

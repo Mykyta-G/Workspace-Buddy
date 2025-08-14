@@ -1,0 +1,15 @@
+# Mac Preset Handler - Development Prototype Requirements
+# Note: This prototype uses only Python standard library modules
+# No additional packages need to be installed
+
+# Core dependencies (built into Python):
+# - tkinter (GUI framework)
+# - json (data serialization)
+# - os (file operations)
+# - sys (system operations)
+# - typing (type hints)
+
+# Optional: For enhanced development experience
+# - pytest (for testing)
+# - black (code formatting)
+# - flake8 (linting)
