@@ -111,14 +111,58 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
         
-        // Show a visible alert to confirm the app is running
+        // Check if this is the first launch and show startup recommendation
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            let alert = NSAlert()
-            alert.messageText = "Mac Preset Handler is Running!"
-            alert.informativeText = "The app will now start automatically when you boot your Mac. Check your menu bar for the list icon."
-            alert.addButton(withTitle: "OK")
-            alert.runModal()
+            self?.checkFirstLaunchAndShowRecommendation()
         }
+    }
+    
+    private func checkFirstLaunchAndShowRecommendation() {
+        let defaults = UserDefaults.standard
+        let hasLaunchedBefore = defaults.bool(forKey: "hasLaunchedBefore")
+        
+        if !hasLaunchedBefore {
+            // First launch - show startup recommendation
+            showStartupRecommendation()
+            defaults.set(true, forKey: "hasLaunchedBefore")
+        } else {
+            // Not first launch - show simple confirmation
+            showRunningConfirmation()
+        }
+    }
+    
+    private func showStartupRecommendation() {
+        let alert = NSAlert()
+        alert.messageText = "Welcome to Mac Preset Handler!"
+        alert.informativeText = "We recommend you turn off automatic startup for other apps to improve your Mac's boot performance. This app will start automatically when you need it.\n\nYou can manage startup items in System Preferences > Users & Groups > Login Items."
+        alert.addButton(withTitle: "Open System Preferences")
+        alert.addButton(withTitle: "Not Now")
+        alert.addButton(withTitle: "OK")
+        
+        let response = alert.runModal()
+        
+        if response == .alertFirstButtonReturn {
+            // Open System Preferences to Login Items
+            let script = """
+            tell application "System Preferences"
+                activate
+                set current pane to pane id "com.apple.preference.users"
+                reveal anchor "LoginItems"
+            end tell
+            """
+            
+            if let scriptObject = NSAppleScript(source: script) {
+                scriptObject.executeAndReturnError(nil)
+            }
+        }
+    }
+    
+    private func showRunningConfirmation() {
+        let alert = NSAlert()
+        alert.messageText = "Mac Preset Handler is Running!"
+        alert.informativeText = "The app will now start automatically when you boot your Mac. Check your menu bar for the list icon."
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
     
     @objc func togglePopover() {

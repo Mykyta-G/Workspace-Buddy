@@ -13,6 +13,8 @@ struct ContentView: View {
             // Compact header
             headerView
             
+
+            
             // Current preset indicator
             if let current = presetHandler.currentPreset {
                 currentPresetIndicator(current)
@@ -48,7 +50,7 @@ struct ContentView: View {
     
     private var headerView: some View {
         HStack {
-                                Image(systemName: "rectangle.stack.3d.up")
+                                Image(systemName: "rectangle.stack")
                 .font(.title2)
                 .foregroundColor(.blue)
             
@@ -160,6 +162,7 @@ struct PresetRowView: View {
     @State private var newAppName = ""
     @State private var showingAddApp = false
     @State private var searchResults: [String] = []
+    @State private var expandedBrowserApps: Set<String> = [] // Track which browser apps are expanded
     
     // Get the current preset data from the handler
     private var preset: Preset? {
@@ -175,6 +178,71 @@ struct PresetRowView: View {
         searchResults = allApps.filter { appName in
             appName.lowercased().contains(searchQuery)
         }.sorted()
+    }
+    
+    /// Get the actual icon for an application
+    private func getAppIcon(for appName: String) -> NSImage? {
+        let appPaths = [
+            "/Applications/\(appName).app",
+            "/System/Applications/\(appName).app",
+            "/Applications/Utilities/\(appName).app"
+        ]
+        
+        for path in appPaths {
+            if let bundle = Bundle(path: path) {
+                if let iconPath = bundle.path(forResource: "AppIcon", ofType: "icns") {
+                    return NSImage(contentsOfFile: iconPath)
+                }
+                // Try to get the icon from the bundle's info.plist
+                if let iconFile = bundle.object(forInfoDictionaryKey: "CFBundleIconFile") as? String {
+                    let iconPath = bundle.path(forResource: iconFile, ofType: nil) ?? bundle.path(forResource: iconFile, ofType: "icns")
+                    if let iconPath = iconPath {
+                        return NSImage(contentsOfFile: iconPath)
+                    }
+                }
+            }
+        }
+        return nil
+    }
+    
+    /// Get a fallback icon for when the real icon can't be loaded
+    private func getFallbackIcon(for appName: String) -> String {
+        let lowercasedName = appName.lowercased()
+        
+        // Browser apps
+        if lowercasedName.contains("safari") { return "globe" }
+        if lowercasedName.contains("chrome") { return "globe" }
+        if lowercasedName.contains("firefox") { return "globe" }
+        
+        // Development apps
+        if lowercasedName.contains("xcode") { return "hammer" }
+        if lowercasedName.contains("terminal") { return "terminal" }
+        if lowercasedName.contains("code") { return "chevron.left.forwardslash.chevron.right" }
+        
+        // Communication apps
+        if lowercasedName.contains("slack") { return "message" }
+        if lowercasedName.contains("discord") { return "gamecontroller" }
+        if lowercasedName.contains("teams") { return "person.2" }
+        
+        // Media apps
+        if lowercasedName.contains("spotify") { return "music.note" }
+        if lowercasedName.contains("music") { return "music.note" }
+        if lowercasedName.contains("photos") { return "photo" }
+        if lowercasedName.contains("tv") { return "tv" }
+        
+        // Productivity apps
+        if lowercasedName.contains("mail") { return "envelope" }
+        if lowercasedName.contains("notes") { return "note.text" }
+        if lowercasedName.contains("calendar") { return "calendar" }
+        if lowercasedName.contains("pages") { return "doc.text" }
+        if lowercasedName.contains("keynote") { return "presentation" }
+        if lowercasedName.contains("numbers") { return "tablecells" }
+        
+        // Gaming apps
+        if lowercasedName.contains("steam") { return "gamecontroller" }
+        
+        // Default fallback
+        return "app.badge"
     }
     
     private func getAllInstalledApps() -> [String] {
@@ -299,32 +367,125 @@ struct PresetRowView: View {
                             
                             // Apps list with remove buttons
                             VStack(spacing: 6) {
-                                ForEach(preset.apps, id: \.self) { app in
-                                    HStack {
-                                        Image(systemName: "app.badge")
-                                            .font(.caption2)
-                                            .foregroundColor(.blue)
-                                        Text(app)
-                                            .font(.caption)
-                                            .lineLimit(1)
-                                        Spacer()
-                                        
-                                        Button(action: {
-                                            presetHandler.removeAppFromPreset(app, preset: preset)
-                                        }) {
-                                            Image(systemName: "trash")
-                                                .font(.caption2)
-                                                .foregroundColor(.red)
+                                ForEach(preset.apps, id: \.name) { app in
+                                    VStack(spacing: 0) {
+                                        // App row - make entire browser row clickable for expansion
+                                        if app.isBrowser {
+                                            Button(action: {
+                                                if expandedBrowserApps.contains(app.name) {
+                                                    expandedBrowserApps.remove(app.name)
+                                                } else {
+                                                    expandedBrowserApps.insert(app.name)
+                                                }
+                                            }) {
+                                                HStack(spacing: 8) {
+                                                    // Collapse indicator for browser apps
+                                                    Image(systemName: expandedBrowserApps.contains(app.name) ? "chevron.down" : "chevron.right")
+                                                        .font(.caption2)
+                                                        .foregroundColor(.blue)
+                                                        .frame(width: 16, height: 16)
+                                                    
+                                                    // App icon - try to get real icon, fallback to system icon
+                                                    if let appIcon = getAppIcon(for: app.name) {
+                                                        Image(nsImage: appIcon)
+                                                            .resizable()
+                                                            .aspectRatio(contentMode: .fit)
+                                                            .frame(width: 16, height: 16)
+                                                    } else {
+                                                        Image(systemName: getFallbackIcon(for: app.name))
+                                                            .font(.caption2)
+                                                            .foregroundColor(.green)
+                                                    }
+                                                    
+                                                    VStack(alignment: .leading, spacing: 1) {
+                                                        Text(app.name)
+                                                            .font(.caption)
+                                                            .lineLimit(1)
+                                                        
+                                                        // Show website count for browser apps
+                                                        let websiteCount = app.websites.count
+                                                        Text(websiteCount == 0 ? "No websites" : "\(websiteCount) website\(websiteCount == 1 ? "" : "s")")
+                                                            .font(.caption2)
+                                                            .foregroundColor(.secondary)
+                                                    }
+                                                    
+                                                    Spacer()
+                                                    
+                                                    Button(action: {
+                                                        presetHandler.removeAppFromPreset(app.name, preset: preset)
+                                                    }) {
+                                                        Image(systemName: "trash")
+                                                            .font(.caption2)
+                                                            .foregroundColor(.red)
+                                                    }
+                                                    .buttonStyle(PlainButtonStyle())
+                                                }
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 6)
+                                                .background(Color.blue.opacity(0.1))
+                                                .cornerRadius(6)
+                                            }
+                                            .buttonStyle(PlainButtonStyle())
+                                        } else {
+                                            // Non-browser apps - regular row
+                                            HStack(spacing: 8) {
+                                                // Spacer for alignment
+                                                Color.clear
+                                                    .frame(width: 16, height: 16)
+                                                
+                                                // App icon - try to get real icon, fallback to system icon
+                                                if let appIcon = getAppIcon(for: app.name) {
+                                                    Image(nsImage: appIcon)
+                                                        .resizable()
+                                                        .aspectRatio(contentMode: .fit)
+                                                        .frame(width: 16, height: 16)
+                                                } else {
+                                                    Image(systemName: getFallbackIcon(for: app.name))
+                                                        .font(.caption2)
+                                                        .foregroundColor(.blue)
+                                                }
+                                                
+                                                VStack(alignment: .leading, spacing: 1) {
+                                                    Text(app.name)
+                                                        .font(.caption)
+                                                        .lineLimit(1)
+                                                }
+                                                
+                                                Spacer()
+                                                
+                                                Button(action: {
+                                                    presetHandler.removeAppFromPreset(app.name, preset: preset)
+                                                }) {
+                                                    Image(systemName: "trash")
+                                                        .font(.caption2)
+                                                        .foregroundColor(.red)
+                                                }
+                                                .buttonStyle(PlainButtonStyle())
+                                            }
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 6)
+                                            .background(Color.blue.opacity(0.1))
+                                            .cornerRadius(6)
                                         }
-                                        .buttonStyle(PlainButtonStyle())
+                                        
+                                        // Show website management for browser apps only when expanded
+                                        if app.isBrowser && expandedBrowserApps.contains(app.name) {
+                                            WebsiteManagementView(
+                                                presetHandler: presetHandler,
+                                                preset: preset,
+                                                appName: app.name
+                                            )
+                                            .padding(.leading, 24) // Indent under the app
+                                            .transition(.asymmetric(
+                                                insertion: .scale(scale: 0.95).combined(with: .opacity),
+                                                removal: .scale(scale: 0.95).combined(with: .opacity)
+                                            ))
+                                        }
                                     }
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 6)
-                                    .background(Color.blue.opacity(0.1))
-                                    .cornerRadius(6)
                                 }
                             }
                         }
+                        .animation(.easeInOut(duration: 0.2), value: expandedBrowserApps)
                         
                         // Add new app section with smooth search
                         VStack(spacing: 8) {
@@ -509,7 +670,7 @@ struct AddPresetView: View {
         let preset = Preset(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             description: description.trimmingCharacters(in: .whitespacesAndNewlines),
-            apps: apps,
+            stringApps: apps,
             closePrevious: closePrevious,
             icon: icon
         )
@@ -534,8 +695,146 @@ extension View {
     }
 }
 
+// MARK: - Website Management View
+
+struct WebsiteManagementView: View {
+    @ObservedObject var presetHandler: PresetHandler
+    let preset: Preset
+    let appName: String
+    
+    @State private var newWebsiteURL = ""
+    @State private var newWebsiteTitle = ""
+    @State private var isAddingWebsite = false
+    
+    private var app: AppWithPosition? {
+        preset.apps.first { $0.name == appName }
+    }
+    
+    private var websites: [BrowserWebsite] {
+        app?.websites ?? []
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Header with add button
+            HStack {
+                Text("Websites")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Button(action: { isAddingWebsite.toggle() }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: isAddingWebsite ? "minus.circle.fill" : "plus.circle.fill")
+                            .font(.caption)
+                        Text(isAddingWebsite ? "Cancel" : "Add")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.blue)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            .padding(.top, 4)
+            
+            // Inline website input
+            if isAddingWebsite {
+                VStack(spacing: 8) {
+                    HStack(spacing: 8) {
+                        TextField("https://example.com", text: $newWebsiteURL)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .font(.caption)
+                        
+                        TextField("Title (optional)", text: $newWebsiteTitle)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .font(.caption)
+                            .frame(width: 100)
+                    }
+                    
+                    Button("Add Website") {
+                        addWebsite()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .disabled(newWebsiteURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                .padding(10)
+                .background(Color.blue.opacity(0.08))
+                .cornerRadius(8)
+            }
+            
+            // Existing websites list
+            if websites.isEmpty && !isAddingWebsite {
+                Text("No websites configured")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .italic()
+                    .padding(.vertical, 4)
+            } else if !websites.isEmpty {
+                VStack(spacing: 6) {
+                    ForEach(websites) { website in
+                        HStack(spacing: 8) {
+                            Image(systemName: "globe")
+                                .font(.caption2)
+                                .foregroundColor(.green)
+                                .frame(width: 16)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(website.displayTitle)
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .lineLimit(1)
+                                
+                                Text(website.url)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+                            
+                            Spacer()
+                            
+                            Button(action: {
+                                presetHandler.removeWebsiteFromApp(website, appName: appName, preset: preset)
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.caption2)
+                                    .foregroundColor(.red.opacity(0.8))
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                        .background(Color.green.opacity(0.08))
+                        .cornerRadius(6)
+                    }
+                }
+            }
+        }
+    }
+    
+    private func addWebsite() {
+        let trimmedURL = newWebsiteURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedTitle = newWebsiteTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        if !trimmedURL.isEmpty {
+            let website = BrowserWebsite(url: trimmedURL, title: trimmedTitle)
+            presetHandler.addWebsiteToApp(website, appName: appName, preset: preset)
+            cancelAdding()
+        }
+    }
+    
+    private func cancelAdding() {
+        newWebsiteURL = ""
+        newWebsiteTitle = ""
+        isAddingWebsite = false
+    }
+}
+
 // MARK: - Preview
 
 #Preview {
     ContentView()
 }
+
+

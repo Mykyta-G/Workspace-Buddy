@@ -1,6 +1,6 @@
 # Mac Preset Handler 🚀
 
-A powerful macOS menu bar application for managing workspace presets and applications. Create custom workspaces with specific apps, switch between them seamlessly, and maintain your productivity workflow.
+A powerful macOS menu bar application for managing workspace presets and applications. Create custom workspaces with specific apps, switch between them seamlessly, and maintain your productivity workflow with intelligent browser website management.
 
 ## ✨ Features
 
@@ -9,6 +9,13 @@ A powerful macOS menu bar application for managing workspace presets and applica
 - **App Bundles**: Assign multiple applications to each preset
 - **One-Click Switching**: Switch between workspaces instantly
 - **Smart App Handling**: Automatically close previous apps when switching (optional)
+
+### 🌐 **Advanced Browser Integration**
+- **Website Management**: Add specific URLs to open when switching to browser presets
+- **Smart URL Handling**: Automatically opens configured websites in Safari, Chrome, Firefox, etc.
+- **Collapsible Browser Apps**: Click anywhere on browser rows to expand and manage websites
+- **URL Validation**: Ensures only valid URLs are added to presets
+- **Auto-Title Detection**: Automatically extracts website titles from URLs
 
 ### 🔍 **Intelligent App Search & Management**
 - **Real-Time Search**: Search all installed applications as you type
@@ -20,6 +27,7 @@ A powerful macOS menu bar application for managing workspace presets and applica
 ### 🎨 **Modern, Intuitive Interface**
 - **Menu Bar Integration**: Clean, accessible from the top menu bar
 - **Expandable Presets**: Click any preset row to expand and manage apps
+- **Real App Icons**: Displays actual application icons instead of generic symbols
 - **Smooth Animations**: Beautiful expand/collapse transitions
 - **Compact Design**: Efficient use of space with clean layouts
 - **Visual Feedback**: Clear indicators for active presets and loading states
@@ -29,21 +37,23 @@ A powerful macOS menu bar application for managing workspace presets and applica
 - **System Integration**: Seamlessly works with macOS applications
 - **Performance Optimized**: Lightweight and fast operation
 - **Developer Friendly**: Built with SwiftUI and modern macOS APIs
+- **Comprehensive Auto-Save**: Saves on app quit, system sleep, shutdown, and every change
 
 ## 🎯 Use Cases
 
 ### 💼 **Work Environment**
-- **Development**: Xcode, Terminal, Safari, Slack, Mail
-- **Design**: Figma, Photoshop, Sketch, Browser
+- **Development**: Xcode, Terminal, Safari (with GitHub, Stack Overflow), Slack, Mail
+- **Design**: Figma, Photoshop, Sketch, Browser (with design resources)
 - **Office**: Word, Excel, PowerPoint, Teams, Calendar
 
 ### 🎮 **Gaming Setup**
 - **Gaming Apps**: Steam, Discord, Game clients
 - **Streaming**: OBS, Twitch, YouTube
 - **Communication**: Discord, Teamspeak, Mumble
+- **Browser**: Safari/Chrome (with gaming forums, Reddit, Twitch)
 
 ### 📚 **Study Mode**
-- **Research**: Safari, Notes, Calendar, Mail
+- **Research**: Safari (with Canvas, Google Drive, research sites), Notes, Calendar, Mail
 - **Documentation**: Word, PDF readers, Reference apps
 - **Focus**: Music apps, Timer apps, Study tools
 
@@ -51,6 +61,7 @@ A powerful macOS menu bar application for managing workspace presets and applica
 - **Entertainment**: Netflix, Spotify, Games
 - **Social**: Social media apps, Messaging
 - **Hobbies**: Photo editing, Music creation, Reading
+- **Browser**: Safari/Chrome (with YouTube, Netflix, Instagram)
 
 ## 🛠️ Installation & Setup
 
@@ -176,19 +187,60 @@ rm -rf .build && ./build.sh
 2. **Smart Fallbacks**: Handles both system and third-party applications
 3. **Error Handling**: Graceful fallbacks when apps can't be launched
 
+## 🌐 Website Management
+
+### **How It Works**
+The Mac Preset Handler now includes intelligent browser website management that automatically opens specific URLs when you switch to presets containing browser applications.
+
+### **Setting Up Websites**
+1. **Expand a Preset**: Click on any preset row to expand it
+2. **Find Browser Apps**: Look for apps with globe icons (🌐) - these are browser apps
+3. **Click to Expand**: Click anywhere on the browser app row to expand website management
+4. **Add Websites**: Use the inline form to add URLs and optional titles
+5. **Auto-Open**: When you switch to the preset, all configured websites will automatically open
+
+### **Supported Browsers**
+- **Safari** - Native macOS browser
+- **Google Chrome** - Popular cross-platform browser
+- **Firefox** - Privacy-focused browser
+- **Microsoft Edge** - Modern Chromium-based browser
+- **Opera** - Feature-rich browser
+- **Brave** - Privacy-focused Chromium browser
+
+### **URL Features**
+- **Automatic Validation**: Ensures URLs are properly formatted (http/https)
+- **Smart Titles**: Automatically extracts website names from URLs
+- **Custom Titles**: Option to set your own descriptive names
+- **Easy Management**: Add, edit, and remove websites with simple controls
+
+### **Example Workflow**
+1. **Create Work Preset** with Safari, Xcode, Terminal
+2. **Add Websites** to Safari: GitHub, Stack Overflow, Documentation
+3. **Switch to Work Preset** → Safari opens with all your work sites
+4. **Switch to Gaming Preset** → Different websites open automatically
+
 ## 🚀 Future Enhancements
 
+### **Recently Implemented** ✅
+- **Real App Icons**: Now displays actual application icons instead of generic symbols
+- **Website Management**: Full browser integration with automatic URL opening
+- **Collapsible Browser Apps**: Entire browser rows are clickable for expansion
+- **Enhanced Auto-Save**: Comprehensive saving on all app lifecycle events
+- **Improved UI/UX**: Cleaner interface with better spacing and visual hierarchy
+
 ### **Planned Features**
-- **App Icons**: Display actual app icons instead of generic symbols
 - **Preset Templates**: Pre-built templates for common workflows
 - **Keyboard Shortcuts**: Global hotkeys for quick preset switching
 - **Cloud Sync**: Sync presets across multiple devices
 - **Advanced Scheduling**: Auto-switch presets based on time or location
+- **Website Categories**: Organize websites into groups within browser apps
+- **Custom Browser Commands**: Support for browser-specific launch options
 
 ### **Performance Improvements**
 - **Lazy Loading**: Load app lists on demand
 - **Background Updates**: Update app availability in background
 - **Caching**: Smart caching for frequently accessed data
+- **Icon Caching**: Cache app icons for faster loading
 
 ## 🤝 Contributing
 
