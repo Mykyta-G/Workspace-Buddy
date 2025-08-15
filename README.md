@@ -4,7 +4,7 @@ A powerful macOS menu bar application for managing workspace presets and applica
 
 > **🎯 Quick Start: Download the DMG file from our [Releases page](https://github.com/Mykyta-G/Mac-Preset-Handler/releases) for instant installation!**
 
-**💡 One-liner for developers:** `git clone https://github.com/Mykyta-G/Mac-Preset-Handler.git && cd Mac-Preset-Handler && ./build_release.sh`
+**💡 One-liner for developers:** `git clone https://github.com/Mykyta-G/Mac-Preset-Handler.git && cd Mac-Preset-Handler && ./build.sh`
 
 ## ✨ Features
 
@@ -29,13 +29,13 @@ A powerful macOS menu bar application for managing workspace presets and applica
 - **Easy App Removal**: Red trash icons for each app in presets
 
 ### 🎨 **Modern, Intuitive Interface**
-- **Menu Bar Integration**: Clean, accessible from the top menu bar with customizable icons
+- **Menu Bar Integration**: Clean, accessible from the top menu bar with professional icons
 - **Expandable Presets**: Click any preset row to expand and manage apps
 - **Real App Icons**: Displays actual application icons instead of generic symbols
 - **Smooth Animations**: Beautiful expand/collapse transitions
 - **Compact Design**: Efficient use of space with clean layouts
 - **Visual Feedback**: Clear indicators for active presets and loading states
-- **Custom Menu Bar Icons**: Choose from multiple clean, professional icon designs
+- **Professional Design**: Clean, modern interface with the app's signature blue color scheme
 
 ### 🚀 **Advanced Functionality**
 - **Automatic Saving**: Presets are automatically saved and persist between sessions
@@ -125,8 +125,6 @@ This creates a ready-to-distribute DMG with your app, Applications folder shortc
 - **Hobbies**: Photo editing, Music creation, Reading
 - **Browser**: Safari/Chrome (with YouTube, Netflix, Instagram)
 
-
-
 ## 🔧 Development
 
 ### Project Structure
@@ -138,11 +136,10 @@ MacPresetHandler/
 │   ├── Preset.swift                 # Preset data model
 │   ├── PresetHandler.swift          # Business logic and app management
 │   └── Assets.xcassets/            # App icons and resources
-│       └── MenuBarIcon.imageset/    # Customizable menu bar icons
+│       └── AppIcon.appiconset/      # Professional app icons
 ├── Package.swift                    # Swift Package Manager configuration
 ├── build.sh                         # Build and launch script (development)
 ├── build_release.sh                 # Build and create DMG script (distribution)
-├── switch_icon.py                   # Icon style switcher
 └── presets.json                     # User preset storage
 ```
 
@@ -202,22 +199,6 @@ The `build_release.sh` script automatically:
 - Includes Applications folder shortcut
 - Optimizes for distribution
 
-#### **Customizing Menu Bar Icons**
-Choose from multiple clean, professional icon designs:
-```bash
-# List available icon styles
-python3 switch_icon.py list
-
-# Switch to a different style
-python3 switch_icon.py minimal      # Clean three-dot design (default)
-python3 switch_icon.py advanced     # Layered workspace rectangles
-python3 switch_icon.py circular     # Circular design with preset dots
-python3 switch_icon.py squares      # Overlapping squares
-
-# Check current icon style
-python3 switch_icon.py current
-```
-
 ## 🎨 UI/UX Features
 
 ### **Expandable Preset Rows**
@@ -237,6 +218,7 @@ python3 switch_icon.py current
 - **Consistent spacing** and typography
 - **Responsive layouts** that adapt to content
 - **Accessibility features** for all users
+- **Professional app icon** with clean, modern design
 
 ## 🔍 How It Works
 
@@ -296,6 +278,8 @@ The Mac Preset Handler now includes intelligent browser website management that 
 - **Collapsible Browser Apps**: Entire browser rows are clickable for expansion
 - **Enhanced Auto-Save**: Comprehensive saving on all app lifecycle events
 - **Improved UI/UX**: Cleaner interface with better spacing and visual hierarchy
+- **Professional App Icon**: Clean, modern design with the app's signature blue color scheme
+- **Universal Binary**: Support for both Intel and Apple Silicon Macs
 
 ### **Planned Features**
 - **Preset Templates**: Pre-built templates for common workflows
