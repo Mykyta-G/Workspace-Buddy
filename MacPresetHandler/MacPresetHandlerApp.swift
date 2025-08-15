@@ -48,24 +48,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         
         if let button = statusItem?.button {
-            // Create a unique custom icon - use a different symbol with custom color
-            let customImage = NSImage(systemSymbolName: "list.bullet", accessibilityDescription: "Mac Preset Handler")
-            customImage?.isTemplate = false // Allow custom colors
+            // Create a custom white icon using system symbol
+            let config = NSImage.SymbolConfiguration(pointSize: 16, weight: .medium)
+            let image = NSImage(systemSymbolName: "list.bullet", accessibilityDescription: "Menu")
             
-            // Set a unique color to distinguish from system icons
-            button.image = customImage
-            button.contentTintColor = NSColor.systemBlue // Make it blue to be unique
+            // Apply white tint to make it white
+            image?.isTemplate = true
+            
+            button.image = image
+            button.imagePosition = .imageLeft
+            
             button.action = #selector(togglePopover)
             button.target = self
-            button.title = "" // Remove any text - just use the icon
-            button.isEnabled = true
-            button.isHidden = false
-            
-            // Update the button display
-            button.needsDisplay = true
-            button.needsLayout = true
-            
-            logger.info("Configured status button")
         } else {
             logger.error("Failed to get status button")
         }
@@ -75,7 +69,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Create the popover
         popover = NSPopover()
-        popover?.contentSize = NSSize(width: 350, height: 500)
+        popover?.contentSize = NSSize(width: 300, height: 400)
         popover?.behavior = .transient
         popover?.contentViewController = NSHostingController(rootView: ContentView().environmentObject(PresetHandler()))
         
@@ -166,13 +160,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc func togglePopover() {
-        if let popover = popover {
-            if popover.isShown {
-                popover.performClose(nil)
+        if let button = statusItem?.button {
+            if popover?.isShown == true {
+                popover?.performClose(nil)
             } else {
-                if let button = statusItem?.button {
-                    popover.show(relativeTo: button.bounds, of: button, preferredEdge: NSRectEdge.minY)
-                }
+                popover?.show(relativeTo: button.bounds, of: button, preferredEdge: NSRectEdge.minY)
+                popover?.contentViewController?.view.window?.makeKey()
             }
         }
     }

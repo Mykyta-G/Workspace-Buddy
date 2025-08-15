@@ -1,87 +1,55 @@
 #!/bin/bash
 
-# Mac Preset Handler - Simple Build Script
-# This script builds the app with Swift Package Manager
+# Mac Preset Handler - Build Script
+# This script builds the app using Xcode for proper asset catalog handling
 
 echo "🚀 Building Mac Preset Handler..."
 echo "=================================="
 
-# Check if Swift is available
-if command -v swift &> /dev/null; then
-    echo "✅ Swift found: $(swift --version | head -n 1)"
+# Check if Xcode is available
+if command -v xcodebuild &> /dev/null; then
+    echo "✅ Xcode found: $(xcodebuild -version | head -n 1)"
 else
-    echo "❌ Swift not found. Please install Xcode or Swift."
+    echo "❌ Xcode not found. Please install Xcode from the App Store."
     exit 1
 fi
 
 # Clean previous builds
 echo "🧹 Cleaning previous builds..."
-rm -rf .build
+rm -rf build
+rm -rf MacPresetHandler.app
 echo "✅ Cleaned"
 
-# Build the package
-echo "🔨 Building package..."
-swift build -c release
+# Build the app using Xcode (skip code signing for development)
+echo "🔨 Building app with Xcode (development mode)..."
+xcodebuild -project MacPresetHandler.xcodeproj \
+    -scheme MacPresetHandler \
+    -configuration Debug \
+    -derivedDataPath build \
+    CODE_SIGN_IDENTITY="" \
+    CODE_SIGNING_REQUIRED=NO \
+    CODE_SIGNING_ALLOWED=NO \
+    build
 
 if [ $? -eq 0 ]; then
     echo "✅ Build successful!"
     echo ""
     
-    # Create app bundle
-    echo "📱 Creating app bundle..."
+    # Find the built app
+    APP_PATH=$(find build -name "*.app" -type d | head -n 1)
     
-    # Create app directory structure
-    mkdir -p MacPresetHandler.app/Contents/MacOS
-    mkdir -p MacPresetHandler.app/Contents/Resources
+    if [ -z "$APP_PATH" ]; then
+        echo "❌ Could not find built app!"
+        exit 1
+    fi
     
-    # Copy the binary
-    cp .build/release/MacPresetHandler MacPresetHandler.app/Contents/MacOS/
+    echo "📱 Found app at: $APP_PATH"
     
-    # Copy resources
-    cp -r MacPresetHandler/Assets.xcassets MacPresetHandler.app/Contents/Resources/
-    cp MacPresetHandler/Info.plist MacPresetHandler.app/Contents/
+    # Copy to current directory for easy access
+    cp -R "$APP_PATH" ./MacPresetHandler.app
     
-    # Create Info.plist with proper structure for menu bar only app
-    cat > MacPresetHandler.app/Contents/Info.plist << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>MacPresetHandler</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.macpresethandler.app</string>
-    <key>CFBundleName</key>
-    <string>MacPresetHandler</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
-    <key>CFBundleVersion</key>
-    <string>1</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>14.0</string>
-    <key>LSUIElement</key>
-    <true/>
-    <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2024 Mac Preset Handler. All rights reserved.</string>
-    <key>LSApplicationCategoryType</key>
-    <string>public.app-category.productivity</string>
-    <key>NSSupportsAutomaticTermination</key>
-    <true/>
-    <key>NSSupportsSuddenTermination</key>
-    <true/>
-    <key>NSUserNotificationAlertStyle</key>
-    <string>alert</string>
-</dict>
-</plist>
-EOF
-    
-    echo "✅ App bundle created!"
+    echo "✅ App bundle ready!"
     echo ""
-    
-    # Make the binary executable
-    chmod +x MacPresetHandler.app/Contents/MacOS/MacPresetHandler
     
     echo "🎯 Build complete! The app is ready."
     echo ""
@@ -93,16 +61,18 @@ EOF
     pkill -f MacPresetHandler 2>/dev/null || true
     sleep 1
     
-    echo "🚀 Launching app directly (Ctrl+C will terminate it)..."
+    echo "🚀 Launching app..."
     
-    # Launch the app directly in the same process so Ctrl+C works
-    # This ensures the app closes when you press Ctrl+C
-    ./MacPresetHandler.app/Contents/MacOS/MacPresetHandler
-    
-    echo "✅ App terminated. Terminal is now free."
+    # Launch the app
+    open ./MacPresetHandler.app
     
 else
     echo "❌ Build failed!"
-    echo "Check the error messages above"
+    echo ""
+    echo "💡 Try these troubleshooting steps:"
+    echo "   1. Open the project in Xcode"
+    echo "   2. Clean the build folder (Product > Clean Build Folder)"
+    echo "   3. Check that all asset files are properly referenced"
+    echo "   4. Ensure the AppIcon is properly configured"
     exit 1
 fi

@@ -76,6 +76,12 @@ Mac-Preset-Handler/
 2. Run `./run_prototype.sh` to test
 3. Iterate and improve
 
+### Creating Distribution DMG
+1. Ensure all changes are committed
+2. Run `./build_release.sh` to create a professional DMG
+3. Test the DMG by mounting and installing locally
+4. Upload to GitHub releases for distribution
+
 ### Adding New Features
 1. Extend the `PresetHandler` class
 2. Update the GUI in `PresetHandlerGUI` class
@@ -95,9 +101,17 @@ Mac-Preset-Handler/
 - [x] User interface for testing
 - [x] Preset management system
 
-### Phase 2: Swift App Foundation
-- [ ] Xcode project setup
-- [ ] Basic app structure
+### Phase 2: Swift App Foundation ✅
+- [x] Xcode project setup
+- [x] Basic app structure
+- [x] Build scripts for development and distribution
+- [x] DMG creation for easy installation
+
+### Phase 3: Distribution & Installation ✅
+- [x] Single DMG file distribution
+- [x] Professional installer with Applications shortcut
+- [x] Universal binary (Intel + Apple Silicon)
+- [x] Easy one-click installation for end users
 - [ ] Preset data models
 - [ ] Core functionality
 

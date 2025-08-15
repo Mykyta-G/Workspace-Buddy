@@ -2,6 +2,10 @@
 
 A powerful macOS menu bar application for managing workspace presets and applications. Create custom workspaces with specific apps, switch between them seamlessly, and maintain your productivity workflow with intelligent browser website management.
 
+> **🎯 Quick Start: Download the DMG file from our [Releases page](https://github.com/Mykyta-G/Mac-Preset-Handler/releases) for instant installation!**
+
+**💡 One-liner for developers:** `git clone https://github.com/Mykyta-G/Mac-Preset-Handler.git && cd Mac-Preset-Handler && ./build_release.sh`
+
 ## ✨ Features
 
 ### 🎯 **Smart Workspace Management**
@@ -25,12 +29,13 @@ A powerful macOS menu bar application for managing workspace presets and applica
 - **Easy App Removal**: Red trash icons for each app in presets
 
 ### 🎨 **Modern, Intuitive Interface**
-- **Menu Bar Integration**: Clean, accessible from the top menu bar
+- **Menu Bar Integration**: Clean, accessible from the top menu bar with customizable icons
 - **Expandable Presets**: Click any preset row to expand and manage apps
 - **Real App Icons**: Displays actual application icons instead of generic symbols
 - **Smooth Animations**: Beautiful expand/collapse transitions
 - **Compact Design**: Efficient use of space with clean layouts
 - **Visual Feedback**: Clear indicators for active presets and loading states
+- **Custom Menu Bar Icons**: Choose from multiple clean, professional icon designs
 
 ### 🚀 **Advanced Functionality**
 - **Automatic Saving**: Presets are automatically saved and persist between sessions
@@ -38,6 +43,63 @@ A powerful macOS menu bar application for managing workspace presets and applica
 - **Performance Optimized**: Lightweight and fast operation
 - **Developer Friendly**: Built with SwiftUI and modern macOS APIs
 - **Comprehensive Auto-Save**: Saves on app quit, system sleep, shutdown, and every change
+
+## 📥 **Easy Installation**
+
+### 🎯 **Quick Install (Recommended)**
+1. **Download the DMG**: Get the latest release DMG file from our releases page
+2. **Double-click the DMG**: Mount the disk image
+3. **Drag to Applications**: Drag MacPresetHandler to your Applications folder
+4. **Launch the app**: Find it in your Applications folder and launch
+5. **Access from menu bar**: Look for the list icon in your top menu bar
+
+### 🔧 **Manual Build (For Developers)**
+If you prefer to build from source:
+
+**Prerequisites:**
+- macOS 14.0 or later
+- Xcode 15.0+ (for development)
+- Swift 6.0+
+
+**Build Steps:**
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Mykyta-G/Mac-Preset-Handler.git
+   cd Mac-Preset-Handler
+   ```
+
+2. **Build and run**
+   ```bash
+   ./build.sh
+   ```
+
+3. **Create release DMG**
+   ```bash
+   ./build_release.sh
+   ```
+
+### 📋 **System Requirements**
+- **macOS**: 14.0 (Sonoma) or later
+- **Architecture**: Intel & Apple Silicon (Universal Binary)
+- **Storage**: ~50MB for the application
+- **Permissions**: Menu bar access (granted automatically)
+
+### 🛠️ **For Contributors & Distributors**
+Want to create a DMG for others? It's super easy:
+```bash
+# Just run this one command to create a professional DMG
+./build_release.sh
+```
+
+This creates a ready-to-distribute DMG with your app, Applications folder shortcut, and proper formatting.
+
+### 🎁 **Why DMG Installation?**
+- **✅ One-click setup** - No command line needed
+- **✅ Professional installer** - Looks and feels native
+- **✅ Automatic permissions** - System handles security prompts
+- **✅ Easy updates** - Just download and replace
+- **✅ Universal compatibility** - Works on Intel and Apple Silicon Macs
+- **✅ No dependencies** - Everything included in one file
 
 ## 🎯 Use Cases
 
@@ -63,29 +125,7 @@ A powerful macOS menu bar application for managing workspace presets and applica
 - **Hobbies**: Photo editing, Music creation, Reading
 - **Browser**: Safari/Chrome (with YouTube, Netflix, Instagram)
 
-## 🛠️ Installation & Setup
 
-### Prerequisites
-- macOS 14.0 or later
-- Xcode 15.0+ (for development)
-- Swift 6.0+
-
-### Quick Start
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/Mykyta-G/Mac-Preset-Handler.git
-   cd Mac-Preset-Handler
-   ```
-
-2. **Build and run**
-   ```bash
-   ./build.sh
-   ```
-
-3. **Access from menu bar**
-   - Look for the list icon in your top menu bar
-   - Click to open the preset manager
-   - Start creating your workspaces!
 
 ## 🔧 Development
 
@@ -98,8 +138,11 @@ MacPresetHandler/
 │   ├── Preset.swift                 # Preset data model
 │   ├── PresetHandler.swift          # Business logic and app management
 │   └── Assets.xcassets/            # App icons and resources
+│       └── MenuBarIcon.imageset/    # Customizable menu bar icons
 ├── Package.swift                    # Swift Package Manager configuration
-├── build.sh                         # Build and launch script
+├── build.sh                         # Build and launch script (development)
+├── build_release.sh                 # Build and create DMG script (distribution)
+├── switch_icon.py                   # Icon style switcher
 └── presets.json                     # User preset storage
 ```
 
@@ -140,13 +183,39 @@ swift build -c release
 swift test
 ```
 
-#### **Using the Build Script**
+#### **Using the Build Scripts**
 ```bash
-# Build and launch
+# Build and launch (development)
 ./build.sh
 
 # Clean and rebuild
 rm -rf .build && ./build.sh
+
+# Create release DMG for distribution
+./build_release.sh
+```
+
+#### **Creating Distribution DMG**
+The `build_release.sh` script automatically:
+- Builds the app in Release configuration
+- Creates a professional DMG installer
+- Includes Applications folder shortcut
+- Optimizes for distribution
+
+#### **Customizing Menu Bar Icons**
+Choose from multiple clean, professional icon designs:
+```bash
+# List available icon styles
+python3 switch_icon.py list
+
+# Switch to a different style
+python3 switch_icon.py minimal      # Clean three-dot design (default)
+python3 switch_icon.py advanced     # Layered workspace rectangles
+python3 switch_icon.py circular     # Circular design with preset dots
+python3 switch_icon.py squares      # Overlapping squares
+
+# Check current icon style
+python3 switch_icon.py current
 ```
 
 ## 🎨 UI/UX Features
@@ -284,6 +353,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Issues**: Report bugs or request features on GitHub
 - **Discussions**: Join community discussions
 - **Documentation**: Check the development guide in `DEVELOPMENT.md`
+
+### **Installation Support**
+- **DMG Download**: For easy installation, download the latest DMG from releases
+- **Build Issues**: If building from source, check the development guide
+- **Permissions**: Ensure menu bar access is granted when first launching
 
 ### **Common Issues**
 - **App not appearing**: Check if the app is in `/Applications` or `/System/Applications`
