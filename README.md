@@ -2,7 +2,7 @@
 
 A powerful macOS menu bar application for managing workspace presets and applications. Create custom workspaces with specific apps, switch between them seamlessly, and maintain your productivity workflow with intelligent browser website management.
 
-> **🎯 Quick Start: Download the DMG file from our [Releases page](https://github.com/Mykyta-G/Mac-Preset-Handler/releases) for instant installation!**
+> **🎯 Quick Start: Download the `MacPresetHandler-Clean-v1.0.dmg` file for instant installation without security warnings!**
 
 **💡 One-liner for developers:** `git clone https://github.com/Mykyta-G/Mac-Preset-Handler.git && cd Mac-Preset-Handler && ./build.sh`
 
@@ -47,11 +47,13 @@ A powerful macOS menu bar application for managing workspace presets and applica
 ## 📥 **Easy Installation**
 
 ### 🎯 **Quick Install (Recommended)**
-1. **Download the DMG**: Get the latest release DMG file from our releases page
+1. **Download the DMG**: Get the `MacPresetHandler-Clean-v1.0.dmg` file (included in this repository)
 2. **Double-click the DMG**: Mount the disk image
 3. **Drag to Applications**: Drag MacPresetHandler to your Applications folder
 4. **Launch the app**: Find it in your Applications folder and launch
 5. **Access from menu bar**: Look for the list icon in your top menu bar
+
+**✨ No Security Warnings**: This DMG contains the app with all security attributes already cleaned!
 
 ### 🔧 **Manual Build (For Developers)**
 If you prefer to build from source:
@@ -83,6 +85,29 @@ If you prefer to build from source:
 - **Architecture**: Intel & Apple Silicon (Universal Binary)
 - **Storage**: ~50MB for the application
 - **Permissions**: Menu bar access (granted automatically)
+
+### 🔒 **Security & Installation Issues**
+If you encounter security warnings when installing or launching the app, we have **FREE solutions**:
+
+#### **Quick Fix (Recommended)**
+```bash
+# Run this script to permanently fix security warnings
+./fix_permanent.sh
+```
+
+#### **Advanced Fix (Self-Signing)**
+```bash
+# Create a self-signed certificate and properly sign the app
+./create_self_signed_cert.sh
+```
+
+#### **Manual Fix**
+1. Right-click on MacPresetHandler in Applications
+2. Select "Open" from the context menu
+3. Click "Open" in the security dialog
+4. The app will work normally after this
+
+**Why this happens**: macOS protects users from potentially harmful apps. Since this is a self-built app, it triggers security warnings. Our scripts fix this permanently without requiring Apple Developer accounts or payments.
 
 ### 🛠️ **For Contributors & Distributors**
 Want to create a DMG for others? It's super easy:

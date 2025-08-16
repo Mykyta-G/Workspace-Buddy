@@ -22,6 +22,18 @@ BUILD_DIR="build"
 RELEASE_DIR="release"
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 
+# Check if we have a valid developer identity
+echo -e "${BLUE}Checking for developer identity...${NC}"
+if ! security find-identity -v -p codesigning | grep -q "Developer ID Application"; then
+    echo -e "${YELLOW}⚠️  No Developer ID Application certificate found.${NC}"
+    echo -e "${YELLOW}   The app will be built but may trigger security warnings.${NC}"
+    echo -e "${YELLOW}   To avoid this, obtain a Developer ID certificate from Apple.${NC}"
+    CODESIGN_IDENTITY=""
+else
+    CODESIGN_IDENTITY=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | cut -d'"' -f2)
+    echo -e "${GREEN}✅ Found Developer ID: ${CODESIGN_IDENTITY}${NC}"
+fi
+
 # Clean previous builds
 echo -e "${BLUE}Cleaning previous builds...${NC}"
 rm -rf "${BUILD_DIR}"
@@ -57,6 +69,15 @@ if [ -z "${APP_PATH}" ]; then
 fi
 
 echo -e "${BLUE}Found app at: ${APP_PATH}${NC}"
+
+# Code sign the app if we have a certificate
+if [ -n "${CODESIGN_IDENTITY}" ]; then
+    echo -e "${BLUE}Code signing app...${NC}"
+    codesign --force --deep --sign "${CODESIGN_IDENTITY}" "${APP_PATH}"
+    echo -e "${GREEN}✅ App code signed successfully${NC}"
+else
+    echo -e "${YELLOW}⚠️  Skipping code signing (no certificate)${NC}"
+fi
 
 # Copy app to release directory
 echo -e "${BLUE}Preparing release...${NC}"
@@ -111,5 +132,12 @@ echo -e "${YELLOW}1. Test the DMG:${NC} Double-click to mount and verify content
 echo -e "${YELLOW}2. Install locally:${NC} Drag the app to Applications folder"
 echo -e "${YELLOW}3. Distribute:${NC} Share the DMG file with users"
 echo -e "${YELLOW}4. Upload:${NC} Add to GitHub releases for easy download"
+echo ""
+if [ -n "${CODESIGN_IDENTITY}" ]; then
+    echo -e "${GREEN}✅ App is code signed and should not trigger security warnings${NC}"
+else
+    echo -e "${YELLOW}⚠️  App is not code signed - users may see security warnings${NC}"
+    echo -e "${YELLOW}   Consider obtaining a Developer ID certificate from Apple${NC}"
+fi
 echo ""
 echo -e "${GREEN}🎉 Your Mac Preset Handler is ready for distribution!${NC}"
