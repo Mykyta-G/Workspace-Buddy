@@ -8,12 +8,41 @@ struct ContentView: View {
     @State private var showingDeleteAlert = false
     @State private var presetToDelete: Preset?
     
+    // New preset form state
+    @State private var newPresetName = ""
+    @State private var newPresetDescription = ""
+    @State private var newPresetApps: Set<String> = []
+    @State private var newPresetAppName = ""
+    @State private var newPresetSearchResults: [String] = []
+    @State private var newPresetClosePrevious = true
+    @State private var newPresetIcon = "folder"
+    
+    // Edit preset state
+    @State private var editingPreset: Preset?
+    @State private var editPresetName = ""
+    @State private var editPresetDescription = ""
+    @State private var editPresetApps: Set<String> = []
+    @State private var editPresetAppName = ""
+    @State private var editPresetSearchResults: [String] = []
+    @State private var editPresetClosePrevious = true
+    @State private var editPresetIcon = "folder"
+    
+    // Icon picker state
+    @State private var showIconPicker = false
+    @FocusState private var isTextFieldFocused: Bool
+    
+    // Available icons for selection
+    private let availableIcons = [
+        "folder", "briefcase", "book", "gamecontroller", "heart", 
+        "house", "car", "airplane", "leaf", "star", "laptopcomputer",
+        "gamecontroller.fill", "heart.fill", "star.fill", "book.fill",
+        "paintbrush", "music.note", "globe", "envelope", "calendar"
+    ]
+    
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 8) {
             // Compact header
             headerView
-            
-
             
             // Current preset indicator
             if let current = presetHandler.currentPreset {
@@ -26,12 +55,24 @@ struct ContentView: View {
             // Add preset button
             addPresetButton
         }
-        .padding(16)
-        .frame(width: 350, height: 500)
+        .padding(.horizontal, 23)
+        .padding(.vertical, 8)
+        .frame(minWidth: 400, maxWidth: 400, minHeight: 500, maxHeight: 600)
         .background(Color(NSColor.controlBackgroundColor))
-        .sheet(isPresented: $showingAddPreset) {
-            AddPresetView(presetHandler: presetHandler)
+        .overlay {
+            if showingAddPreset {
+                createPresetOverlay
+            }
+            if editingPreset != nil {
+                editPresetOverlay
+            }
+            if showIconPicker {
+                iconPickerOverlay
+            }
         }
+        .animation(.easeInOut(duration: 0.3), value: showingAddPreset)
+        .animation(.easeInOut(duration: 0.3), value: editingPreset != nil)
+        .animation(.easeInOut(duration: 0.3), value: showIconPicker)
         .alert("Delete Preset", isPresented: $showingDeleteAlert) {
             Button("Delete", role: .destructive) {
                 if let preset = presetToDelete {
@@ -46,26 +87,155 @@ struct ContentView: View {
         }
     }
     
+    // MARK: - New Preset Helper Methods
+    
+    private var isNewPresetValid: Bool {
+        !newPresetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !newPresetDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !newPresetApps.isEmpty
+    }
+    
+    private func searchAppsForNewPreset(query: String) {
+        let searchQuery = query.lowercased()
+        let allApps = getAllInstalledApps()
+        
+        newPresetSearchResults = allApps.filter { appName in
+            appName.lowercased().contains(searchQuery)
+        }.sorted()
+    }
+    
+    private func getAllInstalledApps() -> [String] {
+        var apps: [String] = []
+        
+        let systemPaths = [
+            "/System/Applications",
+            "/Applications",
+            "/Applications/Utilities"
+        ]
+        
+        for path in systemPaths {
+            if let contents = try? FileManager.default.contentsOfDirectory(atPath: path) {
+                for item in contents {
+                    if item.hasSuffix(".app") {
+                        let appName = String(item.dropLast(4))
+                        apps.append(appName)
+                    }
+                }
+            }
+        }
+        
+        return apps.sorted()
+    }
+    
+    private func createNewPreset() {
+        let preset = Preset(
+            name: newPresetName.trimmingCharacters(in: .whitespacesAndNewlines),
+            description: newPresetDescription.trimmingCharacters(in: .whitespacesAndNewlines),
+            stringApps: Array(newPresetApps),
+            closePrevious: newPresetClosePrevious,
+            icon: newPresetIcon
+        )
+        
+        presetHandler.addPreset(preset)
+        resetNewPresetForm()
+        showingAddPreset = false
+    }
+    
+    private func resetNewPresetForm() {
+        newPresetName = ""
+        newPresetDescription = ""
+        newPresetApps.removeAll()
+        newPresetAppName = ""
+        newPresetSearchResults.removeAll()
+        newPresetClosePrevious = true
+        newPresetIcon = "folder"
+    }
+    
+    // MARK: - Edit Preset Helper Methods
+    
+    private var isEditPresetValid: Bool {
+        !editPresetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !editPresetDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !editPresetApps.isEmpty
+    }
+    
+    private func searchAppsForEditPreset(query: String) {
+        let searchQuery = query.lowercased()
+        let allApps = getAllInstalledApps()
+        
+        editPresetSearchResults = allApps.filter { appName in
+            appName.lowercased().contains(searchQuery)
+        }.sorted()
+    }
+    
+    private func startEditingPreset(_ preset: Preset) {
+        editingPreset = preset
+        editPresetName = preset.name
+        editPresetDescription = preset.description
+        editPresetApps = Set(preset.appNames)
+        editPresetIcon = preset.icon ?? "folder"
+        editPresetClosePrevious = preset.closePrevious
+        editPresetAppName = ""
+        editPresetSearchResults.removeAll()
+    }
+    
+    private func saveEditedPreset() {
+        guard let preset = editingPreset else { return }
+        
+        var updatedPreset = preset
+        updatedPreset.name = editPresetName.trimmingCharacters(in: .whitespacesAndNewlines)
+        updatedPreset.description = editPresetDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        updatedPreset.apps = editPresetApps.map { AppWithPosition(name: $0) }
+        updatedPreset.icon = editPresetIcon
+        updatedPreset.closePrevious = editPresetClosePrevious
+        
+        presetHandler.updatePreset(updatedPreset)
+        resetEditPresetForm()
+        editingPreset = nil
+    }
+    
+    private func resetEditPresetForm() {
+        editPresetName = ""
+        editPresetDescription = ""
+        editPresetApps.removeAll()
+        editPresetIcon = "folder"
+        editPresetClosePrevious = true
+        editPresetAppName = ""
+        editPresetSearchResults.removeAll()
+    }
+    
     // MARK: - Header View
     
     private var headerView: some View {
-        HStack {
-                                Image(systemName: "rectangle.stack")
-                .font(.title2)
-                .foregroundColor(.blue)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Workspace Presets")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                Text("\(presetHandler.presets.count) presets available")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+        VStack(spacing: 12) {
+            // Main app title
+            HStack {
+                Spacer()
+                Text("Workspace Buddy")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                    .padding(.bottom, 16)
+                Spacer()
             }
             
-            Spacer()
+            // Preset info section
+            HStack {
+                Image(systemName: "rectangle.stack")
+                    .font(.title2)
+                    .foregroundColor(.blue)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Workspace Presets")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                    Text("\(presetHandler.presets.count) presets available")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+            }
         }
-        .padding(.bottom, 8)
     }
     
     // MARK: - Current Preset Indicator
@@ -88,7 +258,7 @@ struct ContentView: View {
             
             Spacer()
         }
-        .padding(12)
+        .padding(8)
         .background(Color.green.opacity(0.1))
         .cornerRadius(8)
     }
@@ -109,7 +279,7 @@ struct ContentView: View {
                             }
                         },
                         onEdit: {
-                            selectedPreset = preset
+                            startEditingPreset(preset)
                         },
                         onDelete: {
                             presetToDelete = preset
@@ -117,11 +287,16 @@ struct ContentView: View {
                         },
                         presetHandler: presetHandler
                     )
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.95).combined(with: .opacity),
+                        removal: .slide.combined(with: .opacity)
+                    ))
                 }
             }
+            .animation(.easeInOut(duration: 0.3), value: presetHandler.presets)
             .padding(.horizontal, 16)
         }
-        .frame(maxHeight: 300)
+        .frame(maxHeight: 250)
         .scrollIndicators(.hidden) // Hide scroll indicators to prevent layout shift
     }
     
@@ -139,11 +314,474 @@ struct ContentView: View {
             .fontWeight(.medium)
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
+            .padding(.vertical, 8)
             .background(Color.blue)
             .cornerRadius(8)
         }
         .buttonStyle(PlainButtonStyle())
+    }
+    
+    // MARK: - Create Preset Overlay
+    
+    private var createPresetOverlay: some View {
+        VStack(spacing: 0) {
+            // Header with icon and title
+            VStack(spacing: 16) {
+                Button(action: { showIconPicker = true }) {
+                    Image(systemName: newPresetIcon)
+                        .font(.system(size: 48))
+                        .foregroundColor(.blue)
+                        .overlay(
+                            Image(systemName: "pencil.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                                .background(Color.white)
+                                .clipShape(Circle()),
+                            alignment: .bottomTrailing
+                        )
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                Text("Create New Preset")
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+            }
+            .padding(.top, 40)
+            .padding(.bottom, 20)
+            
+            // Form content
+            VStack(spacing: 24) {
+                // Name and Description
+                VStack(spacing: 16) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Preset Name")
+                            .font(.headline)
+                            .fontWeight(.medium)
+                        TextField("Enter preset name", text: $newPresetName)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($isTextFieldFocused)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Description")
+                            .font(.headline)
+                            .fontWeight(.medium)
+                        TextField("What is this preset for?", text: $newPresetDescription)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($isTextFieldFocused)
+                    }
+                }
+                
+                // Apps section (same as existing presets)
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Applications")
+                            .font(.headline)
+                            .fontWeight(.medium)
+                        Spacer()
+                        Text("\(newPresetApps.count) apps")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Add new app section
+                    HStack(spacing: 12) {
+                        TextField("Search for app...", text: $newPresetAppName)
+                            .focused($isTextFieldFocused)
+                            .textFieldStyle(.roundedBorder)
+                            .onChange(of: newPresetAppName) { _, newValue in
+                                if !newValue.isEmpty {
+                                    searchAppsForNewPreset(query: newValue)
+                                }
+                            }
+                        
+                        Button("Add") {
+                            if !newPresetAppName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                let appName = newPresetAppName.trimmingCharacters(in: .whitespacesAndNewlines)
+                                newPresetApps.insert(appName)
+                                newPresetAppName = ""
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(newPresetAppName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                    
+                    // Search results
+                    if !newPresetAppName.isEmpty && !newPresetSearchResults.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Found apps:")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            
+                            ForEach(newPresetSearchResults.prefix(5), id: \.self) { appName in
+                                Button(action: {
+                                    newPresetApps.insert(appName)
+                                    newPresetAppName = ""
+                                }) {
+                                    HStack {
+                                        Image(systemName: "app.badge")
+                                            .font(.caption2)
+                                            .foregroundColor(.blue)
+                                        Text(appName)
+                                            .font(.caption)
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.blue.opacity(0.1))
+                                    .cornerRadius(4)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                    }
+                    
+                    // Selected apps
+                    if !newPresetApps.isEmpty {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                            ForEach(Array(newPresetApps), id: \.self) { appName in
+                                HStack(spacing: 6) {
+                                    Image(systemName: "app.badge")
+                                        .foregroundColor(.green)
+                                        .font(.caption)
+                                    
+                                    Text(appName)
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .lineLimit(1)
+                                    
+                                    Button(action: {
+                                        newPresetApps.remove(appName)
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundColor(.red)
+                                            .font(.caption)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 6)
+                                .background(Color.green.opacity(0.1))
+                                .cornerRadius(6)
+                            }
+                        }
+                    }
+                }
+                
+                // Behavior toggle
+                Toggle("Close previous apps when switching", isOn: $newPresetClosePrevious)
+            }
+            .padding(.horizontal, 24)
+            
+            Spacer()
+            
+            // Action buttons
+            HStack(spacing: 16) {
+                Button("Cancel") {
+                    resetNewPresetForm()
+                    showingAddPreset = false
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                
+                Spacer()
+                
+                Button("Create Preset") {
+                    createNewPreset()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(!isNewPresetValid)
+            }
+            .padding(20)
+            .background(Color(NSColor.controlBackgroundColor))
+            .overlay(
+                Rectangle()
+                    .frame(height: 1)
+                    .foregroundColor(Color.gray.opacity(0.15)),
+                alignment: .top
+            )
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(NSColor.windowBackgroundColor))
+        .zIndex(1000)
+    }
+    
+    // MARK: - Icon Picker Overlay
+    
+    private var iconPickerOverlay: some View {
+        VStack(spacing: 0) {
+            // Header
+            VStack(spacing: 16) {
+                Text("Choose Icon")
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+            }
+            .padding(.top, 40)
+            .padding(.bottom, 20)
+            
+            // Icon grid
+            ScrollView {
+                LazyVGrid(columns: [
+                    GridItem(.flexible(), spacing: 16),
+                    GridItem(.flexible(), spacing: 16),
+                    GridItem(.flexible(), spacing: 16),
+                    GridItem(.flexible(), spacing: 16)
+                ], spacing: 16) {
+                    ForEach(availableIcons, id: \.self) { iconName in
+                        Button(action: { 
+                            // Dismiss keyboard focus first
+                            isTextFieldFocused = false
+                            
+                            if editingPreset != nil {
+                                editPresetIcon = iconName
+                            } else {
+                                newPresetIcon = iconName
+                            }
+                            showIconPicker = false
+                        }) {
+                            VStack(spacing: 8) {
+                                Image(systemName: iconName)
+                                    .font(.title)
+                                    .foregroundColor(iconName == (editingPreset != nil ? editPresetIcon : newPresetIcon) ? .white : .blue)
+                                
+                                Text(iconName.replacingOccurrences(of: ".fill", with: "").capitalized)
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(iconName == (editingPreset != nil ? editPresetIcon : newPresetIcon) ? .white : .secondary)
+                                    .lineLimit(1)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 80)
+                            .background(iconName == (editingPreset != nil ? editPresetIcon : newPresetIcon) ? Color.blue : Color.gray.opacity(0.08))
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(iconName == (editingPreset != nil ? editPresetIcon : newPresetIcon) ? Color.blue : Color.gray.opacity(0.2), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 100)
+            }
+            
+            // Action bar
+            HStack {
+                Button("Cancel") {
+                    // Dismiss keyboard focus first
+                    isTextFieldFocused = false
+                    showIconPicker = false
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                
+                Spacer()
+            }
+            .padding(20)
+            .background(Color(NSColor.controlBackgroundColor))
+            .overlay(
+                Rectangle()
+                    .frame(height: 1)
+                    .foregroundColor(Color.gray.opacity(0.15)),
+                alignment: .top
+            )
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(NSColor.windowBackgroundColor))
+        .zIndex(1001)
+    }
+    
+    // MARK: - Edit Preset Overlay
+    
+    private var editPresetOverlay: some View {
+        VStack(spacing: 0) {
+            // Header with icon and title
+            VStack(spacing: 16) {
+                Button(action: { showIconPicker = true }) {
+                    Image(systemName: editPresetIcon)
+                        .font(.system(size: 48))
+                        .foregroundColor(.blue)
+                        .overlay(
+                            Image(systemName: "pencil.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                                .background(Color.white)
+                                .clipShape(Circle()),
+                            alignment: .bottomTrailing
+                        )
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                Text("Edit Preset")
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+            }
+            .padding(.top, 40)
+            .padding(.bottom, 20)
+            
+            // Form content
+            VStack(spacing: 24) {
+                // Name and Description
+                VStack(spacing: 16) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Preset Name")
+                            .font(.headline)
+                            .fontWeight(.medium)
+                        TextField("Enter preset name", text: $editPresetName)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($isTextFieldFocused)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Description")
+                            .font(.headline)
+                            .fontWeight(.medium)
+                        TextField("What is this preset for?", text: $editPresetDescription)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($isTextFieldFocused)
+                    }
+                }
+                
+                // Apps section (same as existing presets)
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Applications")
+                            .font(.headline)
+                            .fontWeight(.medium)
+                        Spacer()
+                        Text("\(editPresetApps.count) apps")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Add new app section
+                    HStack(spacing: 12) {
+                        TextField("Search for app...", text: $editPresetAppName)
+                            .focused($isTextFieldFocused)
+                            .textFieldStyle(.roundedBorder)
+                            .onChange(of: editPresetAppName) { _, newValue in
+                                if !newValue.isEmpty {
+                                    searchAppsForEditPreset(query: newValue)
+                                }
+                            }
+                        
+                        Button("Add") {
+                            if !editPresetAppName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                let appName = editPresetAppName.trimmingCharacters(in: .whitespacesAndNewlines)
+                                editPresetApps.insert(appName)
+                                editPresetAppName = ""
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(editPresetAppName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                    
+                    // Search results
+                    if !editPresetAppName.isEmpty && !editPresetSearchResults.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Found apps:")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            
+                            ForEach(editPresetSearchResults.prefix(5), id: \.self) { appName in
+                                Button(action: {
+                                    editPresetApps.insert(appName)
+                                    editPresetAppName = ""
+                                }) {
+                                    HStack {
+                                        Image(systemName: "app.badge")
+                                            .font(.caption2)
+                                            .foregroundColor(.blue)
+                                        Text(appName)
+                                            .font(.caption)
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.blue.opacity(0.1))
+                                    .cornerRadius(4)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                    }
+                    
+                    // Selected apps
+                    if !editPresetApps.isEmpty {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                            ForEach(Array(editPresetApps), id: \.self) { appName in
+                                HStack(spacing: 6) {
+                                    Image(systemName: "app.badge")
+                                        .foregroundColor(.green)
+                                        .font(.caption)
+                                    
+                                    Text(appName)
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .lineLimit(1)
+                                    
+                                    Button(action: {
+                                        editPresetApps.remove(appName)
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundColor(.red)
+                                            .font(.caption)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 6)
+                                .background(Color.green.opacity(0.1))
+                                .cornerRadius(6)
+                            }
+                        }
+                    }
+                }
+                
+                // Behavior toggle
+                Toggle("Close previous apps when switching", isOn: $editPresetClosePrevious)
+            }
+            .padding(.horizontal, 24)
+            
+            Spacer()
+            
+            // Action buttons
+            HStack(spacing: 16) {
+                Button("Cancel") {
+                    resetEditPresetForm()
+                    editingPreset = nil
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                
+                Spacer()
+                
+                Button("Save Changes") {
+                    saveEditedPreset()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(!isEditPresetValid)
+            }
+            .padding(20)
+            .background(Color(NSColor.controlBackgroundColor))
+            .overlay(
+                Rectangle()
+                    .frame(height: 1)
+                    .foregroundColor(Color.gray.opacity(0.15)),
+                alignment: .top
+            )
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(NSColor.windowBackgroundColor))
+        .zIndex(1000)
     }
 }
 
@@ -323,6 +961,13 @@ struct PresetRowView: View {
                                 .foregroundColor(.blue)
                                 .frame(width: 24, height: 24)
                             
+                            Button(action: onEdit) {
+                                Image(systemName: "pencil")
+                                    .font(.caption)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .foregroundColor(.blue)
+                            
                             Button(action: onDelete) {
                                 Image(systemName: "trash")
                                     .font(.caption)
@@ -343,7 +988,7 @@ struct PresetRowView: View {
                             }
                         }
                     }
-                    .padding(12)
+                    .padding(8)
                     .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
                     .cornerRadius(8)
                 }
@@ -564,121 +1209,7 @@ struct PresetRowView: View {
     }
 }
 
-// MARK: - Add Preset View
 
-struct AddPresetView: View {
-    @ObservedObject var presetHandler: PresetHandler
-    @Environment(\.dismiss) private var dismiss
-    
-    @State private var name = ""
-    @State private var description = ""
-    @State private var appsText = ""
-    @State private var closePrevious = true
-    @State private var icon = "folder"
-    
-    private let availableIcons = [
-        "folder", "briefcase", "book", "gamecontroller", "heart", 
-        "house", "car", "airplane", "leaf", "star"
-    ]
-    
-    var body: some View {
-        NavigationView {
-            Form {
-                Section("Preset Details") {
-                    TextField("Preset Name", text: $name)
-                    TextField("Description", text: $description)
-                    
-                    Picker("Icon", selection: $icon) {
-                        ForEach(availableIcons, id: \.self) { iconName in
-                            HStack {
-                                Image(systemName: iconName)
-                                Text(iconName.capitalized)
-                            }
-                            .tag(iconName)
-                        }
-                    }
-                }
-                
-                Section("Applications") {
-                    TextField("Apps (comma-separated)", text: $appsText)
-                        .placeholder(when: appsText.isEmpty) {
-                            Text("e.g., Safari, Mail, Notes")
-                                .foregroundColor(.secondary)
-                        }
-                    
-                    Toggle("Close previous apps when switching", isOn: $closePrevious)
-                }
-                
-                Section("Preview") {
-                    if !name.isEmpty || !description.isEmpty || !appsText.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Image(systemName: icon)
-                                    .foregroundColor(.accentColor)
-                                Text(name.isEmpty ? "Preset Name" : name)
-                                    .font(.headline)
-                            }
-                            
-                            if !description.isEmpty {
-                                Text(description)
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            if !appsText.isEmpty {
-                                let apps = appsText.split(separator: ",").map(String.init)
-                                Text("Apps: \(apps.joined(separator: ", "))")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        .padding()
-                        .background(Color(NSColor.controlBackgroundColor))
-                        .cornerRadius(8)
-                    }
-                }
-            }
-            .navigationTitle("Add New Preset")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-                
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
-                        addPreset()
-                    }
-                    .disabled(!isValid)
-                }
-            }
-        }
-    }
-    
-    private var isValid: Bool {
-        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !appsText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-    
-    private func addPreset() {
-        let apps = appsText.split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        
-        let preset = Preset(
-            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-            description: description.trimmingCharacters(in: .whitespacesAndNewlines),
-            stringApps: apps,
-            closePrevious: closePrevious,
-            icon: icon
-        )
-        
-        presetHandler.addPreset(preset)
-        dismiss()
-    }
-}
 
 // MARK: - Extensions
 

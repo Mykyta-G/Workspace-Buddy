@@ -189,11 +189,7 @@ class PresetHandler: ObservableObject {
         
         for windowInfo in windowList {
             if let ownerName = windowInfo[kCGWindowOwnerName as String] as? String,
-               let bounds = windowInfo[kCGWindowBounds as String] as? [String: Any],
-               let x = bounds["X"] as? Double,
-               let y = bounds["Y"] as? Double,
-               let width = bounds["Width"] as? Double,
-               let height = bounds["Height"] as? Double {
+               let bounds = windowInfo[kCGWindowBounds as String] as? [String: Any] {
                 
                 // Only include windows from regular applications (not system windows)
                 if let runningApps = NSWorkspace.shared.runningApplications.first(where: { $0.localizedName == ownerName }),
@@ -437,23 +433,11 @@ class PresetHandler: ObservableObject {
         // or we can try to open it in the specific browser if it's running
         let runningApps = NSWorkspace.shared.runningApplications
         
-        if let browserApp = runningApps.first(where: { $0.localizedName == browserName }) {
-            // Try to open the URL in the specific browser
-            let config = NSWorkspace.OpenConfiguration()
-            config.activates = true
-            
-            // For Safari, we can use the openURL method
-            if browserName == "Safari" {
-                // Safari supports opening URLs directly
-                NSWorkspace.shared.open(url)
-            } else {
-                // For other browsers, try to open the URL (will use default if not supported)
-                NSWorkspace.shared.open(url)
-            }
-        } else {
-            // If the browser isn't running yet, just open the URL (will use default)
-            NSWorkspace.shared.open(url)
-        }
+        // Check if the browser is running, but always use NSWorkspace.open for consistency
+        let _ = runningApps.first(where: { $0.localizedName == browserName })
+        
+        // Use NSWorkspace to open the URL (will use default browser if specific one isn't available)
+        NSWorkspace.shared.open(url)
     }
     
     /// Close applications from a preset

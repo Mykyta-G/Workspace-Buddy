@@ -49,7 +49,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         if let button = statusItem?.button {
             // Create a custom white icon using system symbol
-            let config = NSImage.SymbolConfiguration(pointSize: 16, weight: .medium)
             let image = NSImage(systemSymbolName: "list.bullet", accessibilityDescription: "Menu")
             
             // Apply white tint to make it white
@@ -60,6 +59,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             
             button.action = #selector(togglePopover)
             button.target = self
+            
+            // Add right-click context menu
+            let menu = NSMenu()
+            
+            // Add Quit option
+            let quitItem = NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+            quitItem.target = NSApp
+            menu.addItem(quitItem)
+            
+            // Set the menu for right-click
+            button.menu = menu
         } else {
             logger.error("Failed to get status button")
         }
