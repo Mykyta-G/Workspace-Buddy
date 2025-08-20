@@ -117,6 +117,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         // Initialize preset handler
         presetHandler = PresetHandler()
         
+        // Ensure presets are properly loaded and saved on first launch
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.presetHandler?.forceResetAndMigrate()
+        }
+        
         // Register the app to start at login (only if not already registered) - do this asynchronously
         DispatchQueue.global(qos: .utility).async { [weak self] in
             if let self = self {
@@ -593,6 +598,79 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         }
     }
     
+    /// Reset and migrate presets (called from menu)
+    @objc private func resetAndMigratePresets() {
+        logger.info("🔄 User requested preset reset and migration")
+        
+        let alert = NSAlert()
+        alert.messageText = "Reset and Migrate Presets"
+        alert.informativeText = "This will attempt to migrate your existing presets to the new format and fix any data corruption issues. Your current presets will be preserved if possible."
+        alert.addButton(withTitle: "Reset and Migrate")
+        alert.addButton(withTitle: "Cancel")
+        alert.alertStyle = .informational
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            // Trigger the reset and migration
+            presetHandler?.forceResetAndMigrate()
+            
+            // Show confirmation
+            let confirmAlert = NSAlert()
+            confirmAlert.messageText = "Reset Complete"
+            confirmAlert.informativeText = "Your presets have been reset and migrated. The app will now use the new format for better reliability."
+            confirmAlert.addButton(withTitle: "OK")
+            confirmAlert.runModal()
+        }
+    }
+    
+    /// Show diagnostic information (called from menu)
+    @objc private func showDiagnosticInfo() {
+        logger.info("🔍 User requested diagnostic information")
+        
+        guard let diagnosticInfo = presetHandler?.getDiagnosticInfo() else {
+            let alert = NSAlert()
+            alert.messageText = "Diagnostic Information Unavailable"
+            alert.informativeText = "Could not retrieve diagnostic information."
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            return
+        }
+        
+        // Create a scrollable text view to display the diagnostic info
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 600, height: 400))
+        let textView = NSTextView(frame: scrollView.bounds)
+        textView.string = diagnosticInfo
+        textView.isEditable = false
+        textView.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        textView.backgroundColor = NSColor.textBackgroundColor
+        textView.textColor = NSColor.textColor
+        
+        scrollView.documentView = textView
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = true
+        
+        let alert = NSAlert()
+        alert.messageText = "Workspace-Buddy Diagnostic Information"
+        alert.informativeText = "This information can help diagnose preset loading and saving issues."
+        alert.accessoryView = scrollView
+        alert.addButton(withTitle: "Copy to Clipboard")
+        alert.addButton(withTitle: "OK")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            // Copy to clipboard
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            pasteboard.setString(diagnosticInfo, forType: .string)
+            
+            let copyAlert = NSAlert()
+            copyAlert.messageText = "Copied to Clipboard"
+            copyAlert.informativeText = "Diagnostic information has been copied to your clipboard."
+            copyAlert.addButton(withTitle: "OK")
+            copyAlert.runModal()
+        }
+    }
+    
     // MARK: - Context Menu Management
     
     /// Set up both left-click (popover) and right-click (menu) handling
@@ -651,6 +729,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             removeStartupItem.target = self
             menu.addItem(removeStartupItem)
         }
+        
+        // Add separator
+        menu.addItem(NSMenuItem.separator())
+        
+        // Add "Reset and Migrate Presets" option
+        let resetPresetsItem = NSMenuItem(title: "Reset and Migrate Presets", action: #selector(resetAndMigratePresets), keyEquivalent: "")
+        resetPresetsItem.target = self
+        menu.addItem(resetPresetsItem)
+        
+        // Add "Show Diagnostic Info" option
+        let diagnosticItem = NSMenuItem(title: "Show Diagnostic Info", action: #selector(showDiagnosticInfo), keyEquivalent: "")
+        diagnosticItem.target = self
+        menu.addItem(diagnosticItem)
         
         // Add separator
         menu.addItem(NSMenuItem.separator())

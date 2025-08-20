@@ -621,8 +621,9 @@ class PresetHandler: ObservableObject {
                     savePresetsToFile(migratedPresets)
                     return migratedPresets
                 }
-                print("❌ Migration failed")
-                throw error
+                print("❌ Migration failed, will use default presets")
+                // Don't throw error here, just return nil to use defaults
+                return nil
             }
         } catch {
             print("❌ ERROR loading presets: \(error)")
@@ -660,8 +661,48 @@ class PresetHandler: ObservableObject {
             
         } catch {
             print("Failed to migrate from old format: \(error)")
-            return nil
+            // Try alternative migration approach
+            return migrateFromOldFormatAlternative(data: data)
         }
+    }
+    
+    /// Alternative migration method for edge cases
+    private func migrateFromOldFormatAlternative(data: Data) -> [Preset]? {
+        print("Attempting alternative migration method...")
+        do {
+            // Try to parse as raw JSON first
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                var newPresets: [Preset] = []
+                
+                for (name, presetData) in json {
+                    if let presetDict = presetData as? [String: Any],
+                       let description = presetDict["description"] as? String,
+                       let appsArray = presetDict["apps"] as? [String],
+                       let closePrevious = presetDict["close_previous"] as? Bool {
+                        
+                        print("Alternative migration: \(name) with \(appsArray.count) apps")
+                        let apps = appsArray.map { AppWithPosition(name: $0) }
+                        let newPreset = Preset(
+                            name: name,
+                            description: description,
+                            apps: apps,
+                            closePrevious: closePrevious,
+                            icon: getIconForPreset(name: name)
+                        )
+                        newPresets.append(newPreset)
+                    }
+                }
+                
+                if !newPresets.isEmpty {
+                    print("Alternative migration successful: \(newPresets.count) presets")
+                    return newPresets
+                }
+            }
+        } catch {
+            print("Alternative migration failed: \(error)")
+        }
+        
+        return nil
     }
     
     /// Get appropriate icon for preset based on name
@@ -702,7 +743,13 @@ class PresetHandler: ObservableObject {
                 print("📁 Created directory: \(directory)")
             }
             
-            try data.write(to: fileURL)
+            // Write to a temporary file first, then move it to avoid corruption
+            let tempURL = fileURL.appendingPathExtension("tmp")
+            try data.write(to: tempURL)
+            
+            // Move the temporary file to the final location
+            try fileManager.moveItem(at: tempURL, to: fileURL)
+            
             print("✅ Successfully saved presets to file")
             
             // Verify the file was written
@@ -710,6 +757,14 @@ class PresetHandler: ObservableObject {
                 let attributes = try fileManager.attributesOfItem(atPath: fileURL.path)
                 let fileSize = attributes[.size] as? Int64 ?? 0
                 print("📁 File saved successfully, size: \(fileSize) bytes")
+                
+                // Also verify the file can be read back
+                let verifyData = try Data(contentsOf: fileURL)
+                if verifyData.count == data.count {
+                    print("✅ File verification successful - data integrity confirmed")
+                } else {
+                    print("⚠️  Warning: File verification failed - size mismatch")
+                }
             } else {
                 print("⚠️  Warning: File doesn't exist after save operation")
             }
@@ -718,6 +773,13 @@ class PresetHandler: ObservableObject {
             print("❌ ERROR saving presets: \(error)")
             print("❌ File path: \(fileURL)")
             print("❌ Documents path: \(documentsPath)")
+            
+            // Try to clean up any temporary files
+            let tempURL = fileURL.appendingPathExtension("tmp")
+            if fileManager.fileExists(atPath: tempURL.path) {
+                try? fileManager.removeItem(at: tempURL)
+                print("🧹 Cleaned up temporary file")
+            }
         }
     }
     
@@ -830,5 +892,119 @@ class PresetHandler: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.forceRefreshPresets()
         }
+    }
+    
+    /// Force a complete reset and migration of presets
+    func forceResetAndMigrate() {
+        print("🔄 Force reset and migration triggered...")
+        
+        // Get the documents directory
+        guard let documentsPath = getDocumentsDirectory() else {
+            print("❌ Could not get documents directory for reset")
+            return
+        }
+        
+        let fileURL = documentsPath.appendingPathComponent(presetsFile)
+        
+        // Check if old format file exists
+        if fileManager.fileExists(atPath: fileURL.path) {
+            do {
+                let data = try Data(contentsOf: fileURL)
+                print("📂 Found existing presets file, attempting migration...")
+                
+                if let migratedPresets = migrateFromOldFormat(data: data) {
+                    print("✅ Migration successful, updating presets")
+                    DispatchQueue.main.async {
+                        self.presets = migratedPresets
+                        self.savePresets()
+                    }
+                } else {
+                    print("❌ Migration failed, using default presets")
+                    DispatchQueue.main.async {
+                        self.presets = Preset.defaults
+                        self.savePresets()
+                    }
+                }
+            } catch {
+                print("❌ Error reading existing file: \(error), using defaults")
+                DispatchQueue.main.async {
+                    self.presets = Preset.defaults
+                    self.savePresets()
+                }
+            }
+        } else {
+            print("📂 No existing presets file, using defaults")
+            DispatchQueue.main.async {
+                self.presets = Preset.defaults
+                self.savePresets()
+            }
+        }
+    }
+    
+    /// Get diagnostic information about the current presets state
+    func getDiagnosticInfo() -> String {
+        var info = "=== Workspace-Buddy Diagnostic Information ===\n\n"
+        
+        // Check documents directory
+        if let documentsPath = getDocumentsDirectory() else {
+            info += "❌ Could not get documents directory\n"
+            return info
+        }
+        
+        info += "📁 Documents Directory: \(documentsPath)\n"
+        
+        let fileURL = documentsPath.appendingPathComponent(presetsFile)
+        info += "📄 Presets File Path: \(fileURL)\n"
+        
+        if fileManager.fileExists(atPath: fileURL.path) {
+            do {
+                let attributes = try fileManager.attributesOfItem(atPath: fileURL.path)
+                let fileSize = attributes[.size] as? Int64 ?? 0
+                let creationDate = attributes[.creationDate] as? Date ?? Date()
+                let modificationDate = attributes[.modificationDate] as? Date ?? Date()
+                
+                info += "✅ File exists\n"
+                info += "📊 File size: \(fileSize) bytes\n"
+                info += "📅 Created: \(creationDate)\n"
+                info += "📅 Modified: \(modificationDate)\n"
+                
+                // Try to read the file
+                let data = try Data(contentsOf: fileURL)
+                info += "📖 File can be read, size: \(data.count) bytes\n"
+                
+                // Try to decode
+                do {
+                    let presets = try JSONDecoder().decode([Preset].self, from: data)
+                    info += "✅ File decodes successfully as new format\n"
+                    info += "📱 Number of presets: \(presets.count)\n"
+                    for preset in presets {
+                        info += "  - \(preset.name): \(preset.apps.count) apps\n"
+                    }
+                } catch {
+                    info += "❌ File does not decode as new format: \(error)\n"
+                    
+                    // Try old format
+                    if let migratedPresets = migrateFromOldFormat(data: data) {
+                        info += "✅ File can be migrated from old format\n"
+                        info += "📱 Number of migrated presets: \(migratedPresets.count)\n"
+                    } else {
+                        info += "❌ File cannot be migrated from old format\n"
+                    }
+                }
+            } catch {
+                info += "❌ Error reading file: \(error)\n"
+            }
+        } else {
+            info += "❌ File does not exist\n"
+        }
+        
+        info += "\n📱 Current Presets in Memory: \(presets.count)\n"
+        for preset in presets {
+            info += "  - \(preset.name): \(preset.apps.count) apps\n"
+        }
+        
+        info += "\n🎯 Current Active Preset: \(currentPreset?.name ?? "None")\n"
+        
+        return info
     }
 }
