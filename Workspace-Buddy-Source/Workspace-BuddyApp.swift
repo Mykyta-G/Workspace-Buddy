@@ -71,6 +71,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         let accessEnabled = AXIsProcessTrustedWithOptions(options as CFDictionary)
         logger.info("Accessibility enabled: \(accessEnabled)")
         
+        // If accessibility is not enabled, show a helpful message
+        if !accessEnabled {
+            logger.warning("⚠️ Accessibility permissions not granted - login item registration may fail")
+            // Show a helpful alert about permissions
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+                self?.showAccessibilityPermissionAlert()
+            }
+        }
+        
         // Hide the dock icon since this is a menu bar app
         NSApp.setActivationPolicy(.accessory)
         
@@ -111,10 +120,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         // Register the app to start at login (only if not already registered) - do this asynchronously
         DispatchQueue.global(qos: .utility).async { [weak self] in
             if let self = self {
+                logger.info("🔄 Checking startup registration status...")
                 if !self.isRegisteredForLogin() {
+                    logger.info("📝 App not registered for startup - attempting registration...")
                     self.registerForLogin()
                 } else {
-                    self.logger.info("App is already registered for login")
+                    logger.info("✅ App is already registered for login")
                 }
             }
         }
@@ -153,11 +164,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         
         if !hasLaunchedBefore {
             // First launch - show startup recommendation
-            showStartupRecommendation()
+            DispatchQueue.main.async { [weak self] in
+                self?.showStartupRecommendation()
+            }
             defaults.set(true, forKey: "hasLaunchedBefore")
         } else {
             // Not first launch - show simple confirmation
-            showRunningConfirmation()
+            DispatchQueue.main.async { [weak self] in
+                self?.showRunningConfirmation()
+            }
         }
     }
     
@@ -193,6 +208,30 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         alert.informativeText = "The app will now start automatically when you boot your Mac. Check your menu bar for the list icon."
         alert.addButton(withTitle: "OK")
         alert.runModal()
+    }
+    
+    private func showAccessibilityPermissionAlert() {
+        let alert = NSAlert()
+        alert.messageText = "Accessibility Permissions Required"
+        alert.informativeText = "Workspace-Buddy needs accessibility permissions to automatically start when you log in.\n\nTo enable this:\n1. Go to System Settings > Privacy & Security > Accessibility\n2. Click the lock icon and enter your password\n3. Add Workspace-Buddy to the list\n4. Restart the app"
+        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "Not Now")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            // Open System Settings to Accessibility
+            let script = """
+            tell application "System Settings"
+                activate
+                set current pane to pane id "com.apple.preference.security"
+                reveal anchor "Privacy_Accessibility"
+            end tell
+            """
+            
+            if let scriptObject = NSAppleScript(source: script) {
+                scriptObject.executeAndReturnError(nil)
+            }
+        }
     }
     
     @objc func togglePopover() {
@@ -246,8 +285,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     // MARK: - Login Registration
     
     private func registerForLogin() {
-        // Modern login item registration using AppleScript - much faster
+        logger.info("🔄 Attempting to register for startup...")
+        
+        // Get the actual app path (resolve symlinks)
         let appPath = Bundle.main.bundlePath
+        let resolvedPath = (appPath as NSString).resolvingSymlinksInPath
+        logger.info("App path: \(resolvedPath)")
         
         // Check if we're already registered
         if isRegisteredForLogin() {
@@ -255,17 +298,38 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             return
         }
         
-        do {
-            // Simple registration using AppleScript
-            let success = try addToLoginItems(appURL: URL(fileURLWithPath: appPath))
-            
-            if success {
-                logger.info("✅ Successfully registered for startup")
-            } else {
-                logger.warning("⚠️ Modern startup registration failed")
+        // Try multiple registration methods
+        var registrationSuccess = false
+        
+        // Method 1: Try modern ServiceManagement API (requires code signing)
+        if !registrationSuccess {
+            registrationSuccess = registerUsingServiceManagement(appPath: resolvedPath)
+        }
+        
+        // Method 2: Try AppleScript (requires accessibility permissions)
+        if !registrationSuccess {
+            registrationSuccess = registerUsingAppleScript(appPath: resolvedPath)
+        }
+        
+        // Method 3: Try LaunchAgent as fallback
+        if !registrationSuccess {
+            do {
+                try registerUsingAlternativeMethod(appPath: resolvedPath)
+                registrationSuccess = true
+                logger.info("✅ Fallback LaunchAgent registration successful")
+            } catch {
+                logger.error("❌ LaunchAgent registration failed: \(error)")
             }
-        } catch {
-            logger.error("❌ Failed to register for startup: \(error)")
+        }
+        
+        if registrationSuccess {
+            logger.info("✅ Successfully registered for startup using fallback method")
+            // Verify registration
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                self?.verifyStartupRegistration()
+            }
+        } else {
+            logger.error("❌ All startup registration methods failed")
         }
     }
     
@@ -332,17 +396,39 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         return items
     }
     
+    private func registerUsingServiceManagement(appPath: String) -> Bool {
+        // This method requires proper code signing and entitlements
+        // For now, we'll return false and use fallback methods
+        logger.info("ServiceManagement API not available (requires code signing)")
+        return false
+    }
+    
+    private func registerUsingAppleScript(appPath: String) -> Bool {
+        do {
+            let task = Process()
+            task.launchPath = "/usr/bin/osascript"
+            task.arguments = [
+                "-e", "tell application \"System Events\" to make login item at end with properties {path:\"\(appPath)\", hidden:true}"
+            ]
+            
+            try task.run()
+            task.waitUntilExit()
+            
+            let success = task.terminationStatus == 0
+            if success {
+                logger.info("✅ AppleScript registration successful")
+            } else {
+                logger.warning("⚠️ AppleScript registration failed with status: \(task.terminationStatus)")
+            }
+            return success
+        } catch {
+            logger.error("❌ AppleScript registration error: \(error)")
+            return false
+        }
+    }
+    
     private func addToLoginItems(appURL: URL) throws -> Bool {
-        let task = Process()
-        task.launchPath = "/usr/bin/osascript"
-        task.arguments = [
-            "-e", "tell application \"System Events\" to make login item at end with properties {path:\"\(appURL.path)\", hidden:true}"
-        ]
-        
-        try task.run()
-        task.waitUntilExit()
-        
-        return task.terminationStatus == 0
+        return registerUsingAppleScript(appPath: appURL.path)
     }
     
     private func registerUsingAlternativeMethod(appPath: String) throws {
@@ -392,33 +478,59 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
     
     private func isRegisteredForLogin() -> Bool {
-        // Quick check - just verify if we're in the login items list
-        let bundleID = Bundle.main.bundleIdentifier ?? "com.workspacebuddy.app"
+        // Multiple methods to check if we're registered
         let appPath = Bundle.main.bundlePath
+        let resolvedPath = (appPath as NSString).resolvingSymlinksInPath
+        let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "Workspace-Buddy"
         
-        // Simple check using osascript - much faster than parsing all items
-        let task = Process()
-        task.launchPath = "/usr/bin/osascript"
-        task.arguments = [
-            "-e", "tell application \"System Events\" to get the name of every login item whose path contains \"\(appPath)\""
-        ]
+        // Method 1: Check using AppleScript (most reliable)
+        let appleScriptCheck = checkLoginItemWithAppleScript(appPath: resolvedPath, appName: appName)
+        if appleScriptCheck {
+            logger.info("✅ Login item found via AppleScript check")
+            return true
+        }
         
-        let outputPipe = Pipe()
-        task.standardOutput = outputPipe
+        // Method 2: Check LaunchAgent files
+        let launchAgentCheck = checkLaunchAgentFiles()
+        if launchAgentCheck {
+            logger.info("✅ Login item found via LaunchAgent check")
+            return true
+        }
         
+        logger.info("❌ App not found in login items")
+        return false
+    }
+    
+    private func checkLoginItemWithAppleScript(appPath: String, appName: String) -> Bool {
         do {
+            let task = Process()
+            task.launchPath = "/usr/bin/osascript"
+            task.arguments = [
+                "-e", "tell application \"System Events\" to get the name of every login item whose path contains \"\(appPath)\""
+            ]
+            
+            let outputPipe = Pipe()
+            task.standardOutput = outputPipe
+            
             try task.run()
             task.waitUntilExit()
             
             let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
             let output = String(data: outputData, encoding: .utf8) ?? ""
             
-            // If we get any output, we're registered
             return !output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         } catch {
-            logger.error("Error checking login registration: \(error)")
+            logger.error("AppleScript login check failed: \(error)")
             return false
         }
+    }
+    
+    private func checkLaunchAgentFiles() -> Bool {
+        let bundleID = Bundle.main.bundleIdentifier ?? "com.workspacebuddy.app"
+        let launchAgentPath = "~/Library/LaunchAgents/\(bundleID).plist"
+        let expandedPath = (launchAgentPath as NSString).expandingTildeInPath
+        
+        return FileManager.default.fileExists(atPath: expandedPath)
     }
     
     /// Verify startup registration and fix if needed
@@ -449,6 +561,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     /// Fix startup registration (called from menu)
     @objc private func fixStartupRegistration() {
         forceReRegisterForStartup()
+    }
+    
+    /// Request accessibility permissions (called from menu)
+    @objc private func requestAccessibilityPermissions() {
+        showAccessibilityPermissionAlert()
     }
     
     /// Remove from startup (called from menu)
@@ -525,6 +642,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             let fixStartupItem = NSMenuItem(title: "Fix Startup Registration", action: #selector(fixStartupRegistration), keyEquivalent: "")
             fixStartupItem.target = self
             menu.addItem(fixStartupItem)
+            
+            let permissionsItem = NSMenuItem(title: "Request Accessibility Permissions", action: #selector(requestAccessibilityPermissions), keyEquivalent: "")
+            permissionsItem.target = self
+            menu.addItem(permissionsItem)
         } else {
             let removeStartupItem = NSMenuItem(title: "Remove from Startup", action: #selector(removeFromStartup), keyEquivalent: "")
             removeStartupItem.target = self

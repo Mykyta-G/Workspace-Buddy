@@ -1,0 +1,2 @@
+Target dependency graph (1 target)
+Target 'Workspace-Buddy' in project 'Workspace-Buddy' (no dependencies)
