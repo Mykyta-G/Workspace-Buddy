@@ -41,6 +41,12 @@
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "1024x1024"
+    },
+    {
+      "filename" : "icon_1024x1024_2x.png",
+      "idiom" : "mac",
+      "scale" : "2x",
+      "size" : "1024x1024"
     }
   ],
   "info" : {
