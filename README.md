@@ -6,6 +6,22 @@ A powerful macOS menu bar application for managing workspace presets and applica
 
 **💡 One-liner for developers:** `git clone https://github.com/Mykyta-G/Mac-Preset-Handler.git && cd Mac-Preset-Handler && ./build.sh`
 
+## ⚠️ **Important Security Information**
+
+**Apple can't check app for malicious software**
+
+**To override security settings:**
+
+1. On your Mac, choose **Apple menu** > **System Settings**, then click **Privacy & Security** in the sidebar. (You may need to scroll down.)
+
+2. Go to **Security**, then click **Open**.
+
+3. Click **Open Anyway**.
+
+4. Enter your login password, then click **OK**.
+
+The app is saved as an exception to your security settings and you can open it in the future by double-clicking it, just as you can any authorised app.
+
 ## ✨ Features
 
 ### 🎯 **Smart Workspace Management**
