@@ -946,7 +946,7 @@ class PresetHandler: ObservableObject {
         var info = "=== Workspace-Buddy Diagnostic Information ===\n\n"
         
         // Check documents directory
-        if let documentsPath = getDocumentsDirectory() else {
+        guard let documentsPath = getDocumentsDirectory() else {
             info += "❌ Could not get documents directory\n"
             return info
         }
@@ -959,9 +959,9 @@ class PresetHandler: ObservableObject {
         if fileManager.fileExists(atPath: fileURL.path) {
             do {
                 let attributes = try fileManager.attributesOfItem(atPath: fileURL.path)
-                let fileSize = attributes[.size] as? Int64 ?? 0
-                let creationDate = attributes[.creationDate] as? Date ?? Date()
-                let modificationDate = attributes[.modificationDate] as? Date ?? Date()
+                let fileSize = attributes[FileAttributeKey.size] as? Int64 ?? 0
+                let creationDate = attributes[FileAttributeKey.creationDate] as? Date ?? Date()
+                let modificationDate = attributes[FileAttributeKey.modificationDate] as? Date ?? Date()
                 
                 info += "✅ File exists\n"
                 info += "📊 File size: \(fileSize) bytes\n"

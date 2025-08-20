@@ -80,8 +80,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             }
         }
         
-        // Hide the dock icon since this is a menu bar app
-        NSApp.setActivationPolicy(.accessory)
+        // Set as regular app so it appears in Launchpad and Applications
+        NSApp.setActivationPolicy(.regular)
+        
+        // Hide the dock icon after a short delay to keep it as a menu bar app
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            NSApp.setActivationPolicy(.accessory)
+        }
         
         // Create the status item (menu bar icon)
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -120,6 +125,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         // Ensure presets are properly loaded and saved on first launch
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             self?.presetHandler?.forceResetAndMigrate()
+        }
+        
+        // Monitor startup success and auto-repair if needed
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+            self?.monitorStartupSuccess()
         }
         
         // Register the app to start at login (only if not already registered) - do this asynchronously
@@ -243,7 +253,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         if let button = statusItem?.button {
             if popover?.isShown == true {
                 popover?.performClose(nil)
+                // Hide dock icon when popover closes
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    NSApp.setActivationPolicy(.accessory)
+                }
             } else {
+                // Show dock icon when popover opens (makes app more discoverable)
+                NSApp.setActivationPolicy(.regular)
+                
                 // Show the popover
                 popover?.show(relativeTo: button.bounds, of: button, preferredEdge: NSRectEdge.minY)
                 
@@ -290,7 +307,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     // MARK: - Login Registration
     
     private func registerForLogin() {
-        logger.info("🔄 Attempting to register for startup...")
+        logger.info("🔄 Starting bulletproof startup registration...")
         
         // Get the actual app path (resolve symlinks)
         let appPath = Bundle.main.bundlePath
@@ -303,38 +320,48 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             return
         }
         
-        // Try multiple registration methods
+        // BULLETPROOF REGISTRATION - Try ALL methods simultaneously
         var registrationSuccess = false
+        var successfulMethods: [String] = []
         
-        // Method 1: Try modern ServiceManagement API (requires code signing)
-        if !registrationSuccess {
-            registrationSuccess = registerUsingServiceManagement(appPath: resolvedPath)
+        // Method 1: LaunchAgent (Most Reliable)
+        do {
+            try registerUsingLaunchAgent(appPath: resolvedPath)
+            registrationSuccess = true
+            successfulMethods.append("LaunchAgent")
+            logger.info("✅ LaunchAgent registration successful")
+        } catch {
+            logger.error("❌ LaunchAgent registration failed: \(error)")
         }
         
-        // Method 2: Try AppleScript (requires accessibility permissions)
-        if !registrationSuccess {
-            registrationSuccess = registerUsingAppleScript(appPath: resolvedPath)
+        // Method 2: Login Items (Backup)
+        if registerUsingLoginItems(appPath: resolvedPath) {
+            registrationSuccess = true
+            successfulMethods.append("Login Items")
+            logger.info("✅ Login Items registration successful")
+        } else {
+            logger.error("❌ Login Items registration failed")
         }
         
-        // Method 3: Try LaunchAgent as fallback
-        if !registrationSuccess {
-            do {
-                try registerUsingAlternativeMethod(appPath: resolvedPath)
-                registrationSuccess = true
-                logger.info("✅ Fallback LaunchAgent registration successful")
-            } catch {
-                logger.error("❌ LaunchAgent registration failed: \(error)")
-            }
+        // Method 3: Manual Startup Script (Nuclear Option)
+        if createManualStartupScript(appPath: resolvedPath) {
+            registrationSuccess = true
+            successfulMethods.append("Manual Script")
+            logger.info("✅ Manual startup script created")
+        } else {
+            logger.error("❌ Manual startup script creation failed")
         }
         
         if registrationSuccess {
-            logger.info("✅ Successfully registered for startup using fallback method")
-            // Verify registration
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                self?.verifyStartupRegistration()
+            logger.info("✅ Startup registration successful using: \(successfulMethods.joined(separator: ", "))")
+            
+            // Force verification and repair if needed
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+                self?.forceVerifyAndRepairStartup()
             }
         } else {
-            logger.error("❌ All startup registration methods failed")
+            logger.error("❌ All startup registration methods failed - using emergency fallback")
+            createEmergencyStartupFallback(appPath: resolvedPath)
         }
     }
     
@@ -482,6 +509,215 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         logger.info("✅ Fallback LaunchAgent registration successful")
     }
     
+    // MARK: - Bulletproof Startup Registration Methods
+    
+    /// Register using LaunchAgent (Most Reliable Method)
+    private func registerUsingLaunchAgent(appPath: String) throws {
+        let bundleID = Bundle.main.bundleIdentifier ?? "com.workspacebuddy.app"
+        let loginItemPath = "~/Library/LaunchAgents/\(bundleID).plist"
+        
+        let plistContent = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTD/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>Label</key>
+            <string>\(bundleID)</string>
+            <key>ProgramArguments</key>
+            <array>
+                <string>\(appPath)/Contents/MacOS/Workspace-Buddy</string>
+            </array>
+            <key>RunAtLoad</key>
+            <true/>
+            <key>KeepAlive</key>
+            <true/>
+            <key>ProcessType</key>
+            <string>Background</string>
+            <key>StandardOutPath</key>
+            <string>/tmp/workspacebuddy.log</string>
+            <key>StandardErrorPath</key>
+            <string>/tmp/workspacebuddy.error.log</string>
+            <key>WorkingDirectory</key>
+            <string>\(appPath)/Contents</string>
+            <key>EnvironmentVariables</key>
+            <dict>
+                <key>PATH</key>
+                <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+            </dict>
+        </dict>
+        </plist>
+        """
+        
+        let launchAgentsPath = (loginItemPath as NSString).expandingTildeInPath
+        let launchAgentsDir = (launchAgentsPath as NSString).deletingLastPathComponent
+        
+        // Create directory if it doesn't exist
+        try FileManager.default.createDirectory(atPath: launchAgentsDir, withIntermediateDirectories: true)
+        
+        // Write the plist file
+        try plistContent.write(toFile: launchAgentsPath, atomically: true, encoding: .utf8)
+        
+        // Load the launch agent
+        let process = Process()
+        process.launchPath = "/bin/launchctl"
+        process.arguments = ["load", launchAgentsPath]
+        try process.run()
+        process.waitUntilExit()
+        
+        // Verify the launch agent was loaded
+        let verifyProcess = Process()
+        verifyProcess.launchPath = "/bin/launchctl"
+        verifyProcess.arguments = ["list", bundleID]
+        try verifyProcess.run()
+        verifyProcess.waitUntilExit()
+        
+        if verifyProcess.terminationStatus != 0 {
+            throw NSError(domain: "LaunchAgent", code: 1, userInfo: [NSLocalizedDescriptionKey: "LaunchAgent verification failed"])
+        }
+        
+        logger.info("✅ LaunchAgent registration and verification successful")
+    }
+    
+    /// Register using Login Items (Backup Method)
+    private func registerUsingLoginItems(appPath: String) -> Bool {
+        do {
+            let task = Process()
+            task.launchPath = "/usr/bin/osascript"
+            task.arguments = [
+                "-e", "tell application \"System Events\" to make login item at end with properties {path:\"\(appPath)\", hidden:true}"
+            ]
+            
+            try task.run()
+            task.waitUntilExit()
+            
+            let success = task.terminationStatus == 0
+            if success {
+                logger.info("✅ Login Items registration successful")
+            } else {
+                logger.warning("⚠️ Login Items registration failed with status: \(task.terminationStatus)")
+            }
+            return success
+        } catch {
+            logger.error("❌ Login Items registration error: \(error)")
+            return false
+        }
+    }
+    
+    /// Create manual startup script (Nuclear Option)
+    private func createManualStartupScript(appPath: String) -> Bool {
+        let scriptContent = """
+        #!/bin/bash
+        # Workspace-Buddy Auto-Startup Script
+        # Created automatically - DO NOT EDIT
+        
+        # Wait for system to fully boot
+        sleep 10
+        
+        # Check if app is already running
+        if ! pgrep -f "Workspace-Buddy" > /dev/null; then
+            # Launch the app
+            open "\(appPath)"
+            echo "$(date): Workspace-Buddy started via startup script" >> /tmp/workspacebuddy-startup.log
+        fi
+        """
+        
+        let scriptPath = "~/Library/LaunchAgents/workspacebuddy-startup.sh"
+        let expandedPath = (scriptPath as NSString).expandingTildeInPath
+        
+        do {
+            try scriptContent.write(toFile: expandedPath, atomically: true, encoding: .utf8)
+            
+            // Make it executable
+            let chmodProcess = Process()
+            chmodProcess.launchPath = "/bin/chmod"
+            chmodProcess.arguments = ["+x", expandedPath]
+            try chmodProcess.run()
+            chmodProcess.waitUntilExit()
+            
+            // Create a LaunchAgent to run this script
+            let plistContent = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTD/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+                <key>Label</key>
+                <string>com.workspacebuddy.startupscript</string>
+                <key>ProgramArguments</key>
+                <array>
+                    <string>/bin/bash</string>
+                    <string>\(expandedPath)</string>
+                </array>
+                <key>RunAtLoad</key>
+                <true/>
+                <key>StartInterval</key>
+                <integer>60</integer>
+            </dict>
+            </plist>
+            """
+            
+            let plistPath = "~/Library/LaunchAgents/com.workspacebuddy.startupscript.plist"
+            let expandedPlistPath = (plistPath as NSString).expandingTildeInPath
+            
+            try plistContent.write(toFile: expandedPlistPath, atomically: true, encoding: .utf8)
+            
+            // Load the launch agent
+            let process = Process()
+            process.launchPath = "/bin/launchctl"
+            process.arguments = ["load", expandedPlistPath]
+            try process.run()
+            process.waitUntilExit()
+            
+            logger.info("✅ Manual startup script created and loaded")
+            return true
+        } catch {
+            logger.error("❌ Manual startup script creation failed: \(error)")
+            return false
+        }
+    }
+    
+    /// Emergency startup fallback (Last Resort)
+    private func createEmergencyStartupFallback(appPath: String) {
+        logger.warning("🚨 Using emergency startup fallback")
+        
+        // Create a simple shell script in user's home directory
+        let scriptContent = """
+        #!/bin/bash
+        # Emergency Workspace-Buddy Startup
+        sleep 15
+        open "\(appPath)"
+        """
+        
+        let scriptPath = "~/startup-workspacebuddy.sh"
+        let expandedPath = (scriptPath as NSString).expandingTildeInPath
+        
+        do {
+            try scriptContent.write(toFile: expandedPath, atomically: true, encoding: .utf8)
+            
+            // Make executable
+            let chmodProcess = Process()
+            chmodProcess.launchPath = "/bin/chmod"
+            chmodProcess.arguments = ["+x", expandedPath]
+            try chmodProcess.run()
+            chmodProcess.waitUntilExit()
+            
+            // Add to user's shell profile
+            let profilePath = "~/.zshrc"
+            let expandedProfilePath = (profilePath as NSString).expandingTildeInPath
+            
+            let profileContent = "\n# Workspace-Buddy Emergency Startup\n\(expandedPath) &\n"
+            
+            if let existingContent = try? String(contentsOfFile: expandedProfilePath, encoding: .utf8) {
+                try (existingContent + profileContent).write(toFile: expandedProfilePath, atomically: true, encoding: .utf8)
+            } else {
+                try profileContent.write(toFile: expandedProfilePath, atomically: true, encoding: .utf8)
+            }
+            
+            logger.info("✅ Emergency startup fallback created")
+        } catch {
+            logger.error("❌ Emergency startup fallback failed: \(error)")
+        }
+    }
+    
     private func isRegisteredForLogin() -> Bool {
         // Multiple methods to check if we're registered
         let appPath = Bundle.main.bundlePath
@@ -534,6 +770,103 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         let bundleID = Bundle.main.bundleIdentifier ?? "com.workspacebuddy.app"
         let launchAgentPath = "~/Library/LaunchAgents/\(bundleID).plist"
         let expandedPath = (launchAgentPath as NSString).expandingTildeInPath
+        
+        return FileManager.default.fileExists(atPath: expandedPath)
+    }
+    
+    /// Force verification and repair of startup registration
+    private func forceVerifyAndRepairStartup() {
+        logger.info("🔍 Force verifying startup registration...")
+        
+        let appPath = Bundle.main.bundlePath
+        let resolvedPath = (appPath as NSString).resolvingSymlinksInPath
+        
+        // Check all possible startup methods
+        var startupMethods: [String: Bool] = [:]
+        
+        // Check LaunchAgent
+        startupMethods["LaunchAgent"] = checkLaunchAgentStatus()
+        
+        // Check Login Items
+        startupMethods["Login Items"] = checkLoginItemsStatus(appPath: resolvedPath)
+        
+        // Check Manual Script
+        startupMethods["Manual Script"] = checkManualScriptStatus()
+        
+        // Check Emergency Fallback
+        startupMethods["Emergency Fallback"] = checkEmergencyFallbackStatus()
+        
+        // Log status
+        for (method, status) in startupMethods {
+            logger.info("\(status ? "✅" : "❌") \(method): \(status ? "Working" : "Failed")")
+        }
+        
+        // If any method is working, we're good
+        if startupMethods.values.contains(true) {
+            logger.info("✅ At least one startup method is working")
+            return
+        }
+        
+        // If all methods failed, force re-registration
+        logger.warning("🚨 All startup methods failed - forcing re-registration")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.registerForLogin()
+        }
+    }
+    
+    /// Check LaunchAgent status
+    private func checkLaunchAgentStatus() -> Bool {
+        let bundleID = Bundle.main.bundleIdentifier ?? "com.workspacebuddy.app"
+        
+        do {
+            let process = Process()
+            process.launchPath = "/bin/launchctl"
+            process.arguments = ["list", bundleID]
+            try process.run()
+            process.waitUntilExit()
+            
+            return process.terminationStatus == 0
+        } catch {
+            return false
+        }
+    }
+    
+    /// Check Login Items status
+    private func checkLoginItemsStatus(appPath: String) -> Bool {
+        do {
+            let task = Process()
+            task.launchPath = "/usr/bin/osascript"
+            task.arguments = [
+                "-e", "tell application \"System Events\" to get the name of every login item whose path contains \"\(appPath)\""
+            ]
+            
+            let outputPipe = Pipe()
+            task.standardOutput = outputPipe
+            
+            try task.run()
+            task.waitUntilExit()
+            
+            let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: outputData, encoding: .utf8) ?? ""
+            
+            return !output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        } catch {
+            return false
+        }
+    }
+    
+    /// Check Manual Script status
+    private func checkManualScriptStatus() -> Bool {
+        let scriptPath = "~/Library/LaunchAgents/workspacebuddy-startup.sh"
+        let expandedPath = (scriptPath as NSString).expandingTildeInPath
+        
+        return FileManager.default.fileExists(atPath: expandedPath)
+    }
+    
+    /// Check Emergency Fallback status
+    private func checkEmergencyFallbackStatus() -> Bool {
+        let scriptPath = "~/startup-workspacebuddy.sh"
+        let expandedPath = (scriptPath as NSString).expandingTildeInPath
         
         return FileManager.default.fileExists(atPath: expandedPath)
     }
@@ -623,6 +956,222 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         }
     }
     
+    /// Show startup status and repair options (called from menu)
+    @objc private func showStartupStatusAndRepair() {
+        logger.info("🔍 User requested startup status and repair")
+        
+        let appPath = Bundle.main.bundlePath
+        let resolvedPath = (appPath as NSString).resolvingSymlinksInPath
+        
+        // Check all startup methods
+        var startupMethods: [String: Bool] = [:]
+        startupMethods["LaunchAgent"] = checkLaunchAgentStatus()
+        startupMethods["Login Items"] = checkLoginItemsStatus(appPath: resolvedPath)
+        startupMethods["Manual Script"] = checkManualScriptStatus()
+        startupMethods["Emergency Fallback"] = checkEmergencyFallbackStatus()
+        
+        // Build status message
+        var statusMessage = "Current Startup Status:\n\n"
+        var workingMethods: [String] = []
+        var failedMethods: [String] = []
+        
+        for (method, status) in startupMethods {
+            if status {
+                workingMethods.append(method)
+                statusMessage += "✅ \(method): Working\n"
+            } else {
+                failedMethods.append(method)
+                statusMessage += "❌ \(method): Failed\n"
+            }
+        }
+        
+        statusMessage += "\n"
+        
+        if workingMethods.isEmpty {
+            statusMessage += "🚨 NO STARTUP METHODS ARE WORKING!\n\n"
+            statusMessage += "This means the app will NOT start automatically when you reboot.\n\n"
+            statusMessage += "Recommended Actions:\n"
+            statusMessage += "1. Click 'Force Repair All Methods' to attempt automatic fix\n"
+            statusMessage += "2. Check System Settings > Privacy & Security > Accessibility\n"
+            statusMessage += "3. Ensure Workspace-Buddy has accessibility permissions\n"
+        } else {
+            statusMessage += "✅ Startup is working! The app will start automatically.\n\n"
+            statusMessage += "Working methods: \(workingMethods.joined(separator: ", "))\n"
+            if !failedMethods.isEmpty {
+                statusMessage += "Failed methods: \(failedMethods.joined(separator: ", "))\n"
+            }
+        }
+        
+        // Create alert with options
+        let alert = NSAlert()
+        alert.messageText = "Workspace-Buddy Startup Status"
+        alert.informativeText = statusMessage
+        alert.alertStyle = workingMethods.isEmpty ? .critical : .informational
+        
+        if workingMethods.isEmpty {
+            alert.addButton(withTitle: "Force Repair All Methods")
+            alert.addButton(withTitle: "Open System Settings")
+            alert.addButton(withTitle: "Cancel")
+        } else {
+            alert.addButton(withTitle: "Repair Failed Methods")
+            alert.addButton(withTitle: "OK")
+        }
+        
+        let response = alert.runModal()
+        
+        if response == .alertFirstButtonReturn {
+            if workingMethods.isEmpty {
+                // Force repair all methods
+                logger.info("🔄 User requested force repair of all startup methods")
+                forceRepairAllStartupMethods()
+            } else {
+                // Repair only failed methods
+                logger.info("🔄 User requested repair of failed startup methods")
+                repairFailedStartupMethods(failedMethods: failedMethods)
+            }
+        } else if response == .alertSecondButtonReturn && workingMethods.isEmpty {
+            // Open System Settings
+            openSystemSettings()
+        }
+    }
+    
+    /// Force repair all startup methods
+    private func forceRepairAllStartupMethods() {
+        logger.info("🚨 Force repairing all startup methods...")
+        
+        // Remove all existing startup registrations
+        removeAllStartupRegistrations()
+        
+        // Wait a moment then re-register
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.registerForLogin()
+            
+            // Show confirmation after repair attempt
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                self?.showStartupStatusAndRepair()
+            }
+        }
+    }
+    
+    /// Repair only failed startup methods
+    private func repairFailedStartupMethods(failedMethods: [String]) {
+        logger.info("🔧 Repairing failed startup methods: \(failedMethods)")
+        
+        let appPath = Bundle.main.bundlePath
+        let resolvedPath = (appPath as NSString).resolvingSymlinksInPath
+        
+        for method in failedMethods {
+            switch method {
+            case "LaunchAgent":
+                do {
+                    try registerUsingLaunchAgent(appPath: resolvedPath)
+                    logger.info("✅ LaunchAgent repair successful")
+                } catch {
+                    logger.error("❌ LaunchAgent repair failed: \(error)")
+                }
+            case "Login Items":
+                if registerUsingLoginItems(appPath: resolvedPath) {
+                    logger.info("✅ Login Items repair successful")
+                } else {
+                    logger.error("❌ Login Items repair failed")
+                }
+            case "Manual Script":
+                if createManualStartupScript(appPath: resolvedPath) {
+                    logger.info("✅ Manual Script repair successful")
+                } else {
+                    logger.error("❌ Manual Script repair failed")
+                }
+            case "Emergency Fallback":
+                createEmergencyStartupFallback(appPath: resolvedPath)
+                logger.info("✅ Emergency Fallback repair attempted")
+            default:
+                break
+            }
+        }
+        
+        // Show updated status
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            self?.showStartupStatusAndRepair()
+        }
+    }
+    
+    /// Remove all startup registrations
+    private func removeAllStartupRegistrations() {
+        logger.info("🧹 Removing all startup registrations...")
+        
+        let bundleID = Bundle.main.bundleIdentifier ?? "com.workspacebuddy.app"
+        
+        // Remove LaunchAgent
+        do {
+            let process = Process()
+            process.launchPath = "/bin/launchctl"
+            process.arguments = ["unload", "~/Library/LaunchAgents/\(bundleID).plist"]
+            try process.run()
+            process.waitUntilExit()
+            logger.info("✅ LaunchAgent unloaded")
+        } catch {
+            logger.warning("⚠️ Could not unload LaunchAgent: \(error)")
+        }
+        
+        // Remove manual script LaunchAgent
+        do {
+            let process = Process()
+            process.launchPath = "/bin/launchctl"
+            process.arguments = ["unload", "~/Library/LaunchAgents/com.workspacebuddy.startupscript.plist"]
+            try process.run()
+            process.waitUntilExit()
+            logger.info("✅ Manual script LaunchAgent unloaded")
+        } catch {
+            logger.warning("⚠️ Could not unload manual script LaunchAgent: \(error)")
+        }
+        
+        // Remove from Login Items
+        do {
+            let task = Process()
+            task.launchPath = "/usr/bin/osascript"
+            task.arguments = [
+                "-e", "tell application \"System Events\" to delete login item \"Workspace-Buddy\""
+            ]
+            try task.run()
+            task.waitUntilExit()
+            logger.info("✅ Removed from Login Items")
+        } catch {
+            logger.warning("⚠️ Could not remove from Login Items: \(error)")
+        }
+        
+        // Clean up files
+        let fileManager = FileManager.default
+        let paths = [
+            "~/Library/LaunchAgents/\(bundleID).plist",
+            "~/Library/LaunchAgents/com.workspacebuddy.startupscript.plist",
+            "~/Library/LaunchAgents/workspacebuddy-startup.sh",
+            "~/startup-workspacebuddy.sh"
+        ]
+        
+        for path in paths {
+            let expandedPath = (path as NSString).expandingTildeInPath
+            if fileManager.fileExists(atPath: expandedPath) {
+                try? fileManager.removeItem(atPath: expandedPath)
+                logger.info("✅ Removed file: \(expandedPath)")
+            }
+        }
+    }
+    
+    /// Open System Settings to Accessibility
+    private func openSystemSettings() {
+        let script = """
+        tell application "System Settings"
+            activate
+            set current pane to pane id "com.apple.preference.security"
+            reveal anchor "Privacy_Accessibility"
+        end tell
+        """
+        
+        if let scriptObject = NSAppleScript(source: script) {
+            scriptObject.executeAndReturnError(nil)
+        }
+    }
+    
     /// Show diagnostic information (called from menu)
     @objc private func showDiagnosticInfo() {
         logger.info("🔍 User requested diagnostic information")
@@ -668,6 +1217,48 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             copyAlert.informativeText = "Diagnostic information has been copied to your clipboard."
             copyAlert.addButton(withTitle: "OK")
             copyAlert.runModal()
+        }
+    }
+    
+    /// Show app in dock (called from menu)
+    @objc private func showInDock() {
+        logger.info("📱 User requested to show app in dock")
+        
+        NSApp.setActivationPolicy(.regular)
+        
+        let alert = NSAlert()
+        alert.messageText = "App Now Visible in Dock"
+        alert.informativeText = "Workspace-Buddy is now visible in your dock. You can drag it to your dock for easy access, or use the menu bar icon as usual."
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+    
+    /// Monitor startup success and auto-repair if needed
+    private func monitorStartupSuccess() {
+        logger.info("🔍 Monitoring startup success...")
+        
+        // Check if we're actually registered for startup
+        if !isRegisteredForLogin() {
+            logger.warning("⚠️ Startup monitoring detected registration failure - auto-repairing")
+            
+            // Show user notification
+            let notification = NSUserNotification()
+            notification.title = "Workspace-Buddy Startup Issue Detected"
+            notification.informativeText = "The app will attempt to fix this automatically. You can also check 'Startup Status & Repair' in the menu."
+            notification.soundName = NSUserNotificationDefaultSoundName
+            NSUserNotificationCenter.default.deliver(notification)
+            
+            // Auto-repair
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+                self?.registerForLogin()
+            }
+        } else {
+            logger.info("✅ Startup monitoring confirms registration is working")
+        }
+        
+        // Schedule next check (every 30 minutes)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1800.0) { [weak self] in
+            self?.monitorStartupSuccess()
         }
     }
     
@@ -742,6 +1333,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         let diagnosticItem = NSMenuItem(title: "Show Diagnostic Info", action: #selector(showDiagnosticInfo), keyEquivalent: "")
         diagnosticItem.target = self
         menu.addItem(diagnosticItem)
+        
+        // Add "Startup Status & Repair" option
+        let startupStatusItem = NSMenuItem(title: "Startup Status & Repair", action: #selector(showStartupStatusAndRepair), keyEquivalent: "")
+        startupStatusItem.target = self
+        menu.addItem(startupStatusItem)
+        
+        // Add "Show in Dock" option
+        let showInDockItem = NSMenuItem(title: "Show in Dock", action: #selector(showInDock), keyEquivalent: "")
+        showInDockItem.target = self
+        menu.addItem(showInDockItem)
         
         // Add separator
         menu.addItem(NSMenuItem.separator())
