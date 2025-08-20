@@ -15,7 +15,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-APP_NAME="MacPresetHandler"
+APP_NAME="Workspace-Buddy"
 BUNDLE_ID="com.macpresethandler.app"
 VERSION="1.0.0"
 BUILD_DIR="build"

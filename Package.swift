@@ -4,14 +4,14 @@
 import PackageDescription
 
 let package = Package(
-    name: "MacPresetHandler",
+    name: "Workspace-Buddy",
     platforms: [
         .macOS(.v14)
     ],
     products: [
         .executable(
-            name: "MacPresetHandler",
-            targets: ["MacPresetHandler"]
+            name: "Workspace-Buddy",
+            targets: ["Workspace-Buddy"]
         ),
     ],
     dependencies: [
@@ -19,10 +19,10 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "MacPresetHandler",
+            name: "Workspace-Buddy",
             dependencies: [],
-            path: "MacPresetHandler",
-            sources: ["Preset.swift", "PresetHandler.swift", "ContentView.swift", "MacPresetHandlerApp.swift"],
+            path: "Workspace-Buddy-Source",
+            sources: ["Preset.swift", "PresetHandler.swift", "ContentView.swift", "Workspace-BuddyApp.swift"],
             resources: [
                 .process("Assets.xcassets")
             ]

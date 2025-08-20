@@ -17,13 +17,13 @@ fi
 # Clean previous builds
 echo "🧹 Cleaning previous builds..."
 rm -rf build
-rm -rf MacPresetHandler.app
+rm -rf Workspace-Buddy.app
 echo "✅ Cleaned"
 
 # Build the app using Xcode (skip code signing for development)
 echo "🔨 Building app with Xcode (development mode)..."
-xcodebuild -project MacPresetHandler.xcodeproj \
-    -scheme MacPresetHandler \
+xcodebuild -project Workspace-Buddy.xcodeproj \
+    -scheme Workspace-Buddy \
     -configuration Debug \
     -derivedDataPath build \
     CODE_SIGN_IDENTITY="" \
@@ -46,25 +46,25 @@ if [ $? -eq 0 ]; then
     echo "📱 Found app at: $APP_PATH"
     
     # Copy to current directory for easy access
-    cp -R "$APP_PATH" ./MacPresetHandler.app
+    cp -R "$APP_PATH" ./Workspace-Buddy.app
     
     echo "✅ App bundle ready!"
     echo ""
     
     echo "🎯 Build complete! The app is ready."
     echo ""
-    echo "📁 App location: $(pwd)/MacPresetHandler.app"
+    echo "📁 App location: $(pwd)/Workspace-Buddy.app"
     echo ""
     echo "🧹 Cleaning up any existing instances..."
     
     # Kill any existing instances before launching
-    pkill -f MacPresetHandler 2>/dev/null || true
+    pkill -f Workspace-Buddy 2>/dev/null || true
     sleep 1
     
     echo "🚀 Launching app..."
     
     # Launch the app
-    open ./MacPresetHandler.app
+    open ./Workspace-Buddy.app
     
 else
     echo "❌ Build failed!"

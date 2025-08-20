@@ -5,7 +5,7 @@
 ### **Option 1: Download DMG (Recommended)**
 1. **Download** the latest DMG from the [Releases](https://github.com/Mykyta-G/Mac-Preset-Handler/releases) page
 2. **Double-click** the DMG file to mount it
-3. **Drag** `MacPresetHandler.app` to your `Applications` folder
+3. **Drag** `Workspace-Buddy.app` to your `Applications` folder
 4. **Launch** the app from Applications or Spotlight
 5. **Grant permissions** when prompted (menu bar access, etc.)
 
@@ -87,12 +87,12 @@ The app will request these permissions:
 
 ### **App Not Appearing in Menu Bar**
 - Check **System Preferences > Security & Privacy > Privacy > Menu Bar**
-- Ensure "MacPresetHandler" is checked
+- Ensure "Workspace-Buddy" is checked
 - Restart the app
 
 ### **Can't Launch Other Apps**
 - Go to **System Preferences > Security & Privacy > Privacy > Accessibility**
-- Add "MacPresetHandler" to the list
+- Add "Workspace-Buddy" to the list
 - Restart the app
 
 ### **Websites Not Opening**
@@ -102,7 +102,7 @@ The app will request these permissions:
 
 ### **Presets Not Saving**
 - Check **System Preferences > Security & Privacy > Privacy > Full Disk Access**
-- Add "MacPresetHandler" to the list
+- Add "Workspace-Buddy" to the list
 - Restart the app
 
 ## 📞 Getting Help
@@ -113,7 +113,7 @@ The app will request these permissions:
 
 ## 🎉 You're All Set!
 
-Once installed, Mac Preset Handler will:
+Once installed, Workspace Buddy will:
 - **Run in the background** (no dock icon)
 - **Show in your menu bar** for easy access
 - **Remember all your presets** between launches

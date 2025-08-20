@@ -1,0 +1,448 @@
+{
+  "source": "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/Workspace-Buddy-Source/ContentView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Delete Preset",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 76
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 77
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 82
+        }
+      },
+      {
+        "comment": "",
+        "key": "Are you sure you want to delete '%@'?",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 85
+        }
+      },
+      {
+        "comment": "",
+        "key": "Workspace Buddy",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 214
+        }
+      },
+      {
+        "comment": "",
+        "key": "Workspace Presets",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 228
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld presets available",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 231
+        }
+      },
+      {
+        "comment": "",
+        "key": "Active: %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 250
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add New Preset",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 311
+        }
+      },
+      {
+        "comment": "",
+        "key": "Create New Preset",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 345
+        }
+      },
+      {
+        "comment": "",
+        "key": "Close previous apps when switching",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 474
+        }
+      },
+      {
+        "comment": "",
+        "key": "Preset Name",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 358
+        }
+      },
+      {
+        "comment": "",
+        "key": "Enter preset name",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 361
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 367
+        }
+      },
+      {
+        "comment": "",
+        "key": "What is this preset for?",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 370
+        }
+      },
+      {
+        "comment": "",
+        "key": "Applications",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 379
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld apps",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 383
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search for app...",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 390
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 399
+        }
+      },
+      {
+        "comment": "",
+        "key": "Found apps:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 413
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 482
+        }
+      },
+      {
+        "comment": "",
+        "key": "Create Preset",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 491
+        }
+      },
+      {
+        "comment": "",
+        "key": "Choose Icon",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 518
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 575
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit Preset",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 620
+        }
+      },
+      {
+        "comment": "",
+        "key": "Close previous apps when switching",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 749
+        }
+      },
+      {
+        "comment": "",
+        "key": "Preset Name",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 633
+        }
+      },
+      {
+        "comment": "",
+        "key": "Enter preset name",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 636
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 642
+        }
+      },
+      {
+        "comment": "",
+        "key": "What is this preset for?",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 645
+        }
+      },
+      {
+        "comment": "",
+        "key": "Applications",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 654
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld apps",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 658
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search for app...",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 665
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 674
+        }
+      },
+      {
+        "comment": "",
+        "key": "Found apps:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 688
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 757
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save Changes",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 766
+        }
+      },
+      {
+        "comment": "",
+        "key": "Preset not found",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1206
+        }
+      },
+      {
+        "comment": "",
+        "key": "ACTIVE",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 946
+        }
+      },
+      {
+        "comment": "",
+        "key": "Current",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 978
+        }
+      },
+      {
+        "comment": "",
+        "key": "Switch",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 978
+        }
+      },
+      {
+        "comment": "",
+        "key": "Applications",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1003
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld apps",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1008
+        }
+      },
+      {
+        "comment": "",
+        "key": "No websites",
+        "location": {
+          "startingColumn": 82,
+          "startingLine": 1052
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld website%@",
+        "location": {
+          "startingColumn": 98,
+          "startingLine": 1052
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search for app...",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 1138
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 1148
+        }
+      },
+      {
+        "comment": "",
+        "key": "Found apps:",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 1163
+        }
+      },
+      {
+        "comment": "",
+        "key": "No websites configured",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1300
+        }
+      },
+      {
+        "comment": "",
+        "key": "Websites",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1252
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 1263
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 59,
+          "startingLine": 1263
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Website",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1286
+        }
+      },
+      {
+        "comment": "",
+        "key": "https://example.com",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 1276
+        }
+      },
+      {
+        "comment": "",
+        "key": "Title (optional)",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 1280
+        }
+      }
+    ]
+  },
+  "version": 1
+}

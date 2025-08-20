@@ -14,20 +14,20 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-APP_NAME="MacPresetHandler"
+APP_NAME="Workspace-Buddy"
 APP_PATH="/Applications/${APP_NAME}.app"
 
-echo -e "${BLUE}This script will help you bypass the security warning for MacPresetHandler.${NC}"
+echo -e "${BLUE}This script will help you bypass the security warning for Workspace-Buddy.${NC}"
 echo ""
 
 # Check if app exists
 if [ ! -d "${APP_PATH}" ]; then
-    echo -e "${RED}❌ MacPresetHandler not found in Applications folder!${NC}"
+    echo -e "${RED}❌ Workspace-Buddy not found in Applications folder!${NC}"
     echo "Please install the app first by dragging it to Applications."
     exit 1
 fi
 
-echo -e "${GREEN}✅ Found MacPresetHandler in Applications${NC}"
+echo -e "${GREEN}✅ Found Workspace-Buddy in Applications${NC}"
 echo ""
 
 echo -e "${YELLOW}⚠️  IMPORTANT: This is a temporary workaround.${NC}"
@@ -53,20 +53,20 @@ case $choice in
         if [ $? -eq 0 ]; then
             echo -e "${GREEN}✅ Quarantine attribute removed successfully!${NC}"
             echo ""
-            echo -e "${GREEN}🎉 You should now be able to launch MacPresetHandler normally!${NC}"
+            echo -e "${GREEN}🎉 You should now be able to launch Workspace-Buddy normally!${NC}"
             echo ""
             echo "Try launching the app from Applications or Spotlight."
         else
             echo -e "${RED}❌ Failed to remove quarantine attribute${NC}"
             echo "You may need administrator privileges."
-            echo "Try running: sudo xattr -rd com.apple.quarantine /Applications/MacPresetHandler.app"
+            echo "Try running: sudo xattr -rd com.apple.quarantine /Applications/Workspace-Buddy.app"
         fi
         ;;
     2)
         echo ""
         echo -e "${BLUE}📋 Manual Bypass Steps:${NC}"
         echo ""
-        echo "1. Right-click on MacPresetHandler in Applications folder"
+        echo "1. Right-click on Workspace-Buddy in Applications folder"
         echo "2. Select 'Open' from the context menu"
         echo "3. Click 'Open' in the security dialog that appears"
         echo "4. The app should now launch normally"
@@ -89,4 +89,4 @@ echo "• The developer should obtain a Developer ID certificate from Apple"
 echo "• This would eliminate security warnings completely"
 echo "• Check for updated versions of the app"
 echo ""
-echo -e "${GREEN}🎯 MacPresetHandler should now work without security warnings!${NC}"
+echo -e "${GREEN}🎯 Workspace-Buddy should now work without security warnings!${NC}"

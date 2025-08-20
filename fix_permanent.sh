@@ -14,7 +14,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-APP_NAME="MacPresetHandler"
+APP_NAME="Workspace-Buddy"
 LOCAL_APP_PATH="./${APP_NAME}.app"
 INSTALL_PATH="/Applications/${APP_NAME}.app"
 
@@ -23,12 +23,12 @@ echo ""
 
 # Check if app exists locally
 if [ ! -d "${LOCAL_APP_PATH}" ]; then
-    echo -e "${RED}❌ MacPresetHandler.app not found in current directory!${NC}"
+    echo -e "${RED}❌ Workspace-Buddy.app not found in current directory!${NC}"
     echo "Please make sure you're in the Mac-Preset-Handler directory."
     exit 1
 fi
 
-echo -e "${GREEN}✅ Found MacPresetHandler.app in current directory${NC}"
+echo -e "${GREEN}✅ Found Workspace-Buddy.app in current directory${NC}"
 echo ""
 
 # Check if app is already installed
@@ -93,7 +93,7 @@ cat > "${LAUNCH_SCRIPT}" << 'EOF'
 # Mac Preset Handler Launcher
 # This script ensures the app launches without security issues
 
-APP_PATH="/Applications/MacPresetHandler.app"
+APP_PATH="/Applications/Workspace-Buddy.app"
 
 # Remove any quarantine attributes that might have been added
 xattr -rd com.apple.quarantine "${APP_PATH}" 2>/dev/null || true
@@ -101,7 +101,7 @@ xattr -rd com.apple.quarantine "${APP_PATH}" 2>/dev/null || true
 # Launch the app
 open "${APP_PATH}"
 
-echo "MacPresetHandler launched successfully!"
+echo "Workspace-Buddy launched successfully!"
 echo "Press any key to close this window..."
 read -n 1
 EOF
@@ -120,8 +120,8 @@ echo "✅ Cleaned security metadata"
 echo "✅ Created launch helper script"
 echo ""
 echo -e "${BLUE}🚀 How to use:${NC}"
-echo "1. **Normal launch**: Double-click MacPresetHandler in Applications"
-echo "2. **If issues persist**: Use 'MacPresetHandler Launcher.command'"
+echo "1. **Normal launch**: Double-click Workspace-Buddy in Applications"
+echo "2. **If issues persist**: Use 'Workspace-Buddy Launcher.command'"
 echo "3. **Future updates**: Run this script again after installing updates"
 echo ""
 echo -e "${BLUE}💡 Pro Tips:${NC}"
@@ -135,7 +135,7 @@ echo "• This fix is permanent but may need to be reapplied after system update
 echo "• The app is safe - it's your own code, not malware"
 echo "• This is a common issue with self-built macOS apps"
 echo ""
-echo -e "${GREEN}🎯 Your MacPresetHandler should now work perfectly!${NC}"
+echo -e "${GREEN}🎯 Your Workspace-Buddy should now work perfectly!${NC}"
 echo ""
 echo -e "${BLUE}📱 Test it now by launching the app from Applications!${NC}"
 echo ""
