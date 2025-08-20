@@ -1,0 +1,11 @@
+version: "Apple Swift version 6.1.2 (swiftlang-6.1.2.1.2 clang-1700.0.13.5)"
+options: "d656bdcbca928a11376a8fbdfcc1c8c167557c6a912c5958c4d83290f7a3b24c"
+build_start_time: [1755712125, 577228000]
+build_end_time: [1755712246, 136454000]
+inputs:
+  "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/Workspace-Buddy-Source/ContentView.swift": [1755452300, 956920051]
+  "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/Workspace-Buddy-Source/Preset.swift": [1755285602, 830788727]
+  "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/Workspace-Buddy-Source/PresetHandler.swift": [1755703328, 117361621]
+  "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/Workspace-Buddy-Source/Workspace-BuddyApp.swift": [1755704292, 582297893]
+  ? "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/DerivedSources/GeneratedAssetSymbols.swift"
+  : [1755712122, 288259030]

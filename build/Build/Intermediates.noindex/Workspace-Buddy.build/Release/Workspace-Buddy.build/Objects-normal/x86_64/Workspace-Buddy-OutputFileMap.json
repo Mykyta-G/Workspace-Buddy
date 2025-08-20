@@ -1,0 +1,35 @@
+{
+  "" : {
+    "const-values" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace-Buddy-master.swiftconstvalues",
+    "dependencies" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace-Buddy-master.d",
+    "diagnostics" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace-Buddy-master.dia",
+    "emit-module-dependencies" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace-Buddy-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace-Buddy-master-emit-module.dia",
+    "swift-dependencies" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace-Buddy-master.swiftdeps"
+  },
+  "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/Workspace-Buddy-Source/ContentView.swift" : {
+    "index-unit-output-path" : "/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/ContentView.o",
+    "llvm-bc" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/ContentView.bc",
+    "object" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/ContentView.o"
+  },
+  "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/Workspace-Buddy-Source/Preset.swift" : {
+    "index-unit-output-path" : "/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Preset.o",
+    "llvm-bc" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Preset.bc",
+    "object" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Preset.o"
+  },
+  "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/Workspace-Buddy-Source/PresetHandler.swift" : {
+    "index-unit-output-path" : "/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/PresetHandler.o",
+    "llvm-bc" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/PresetHandler.bc",
+    "object" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/PresetHandler.o"
+  },
+  "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/Workspace-Buddy-Source/Workspace-BuddyApp.swift" : {
+    "index-unit-output-path" : "/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace-BuddyApp.o",
+    "llvm-bc" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace-BuddyApp.bc",
+    "object" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace-BuddyApp.o"
+  },
+  "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "index-unit-output-path" : "/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/GeneratedAssetSymbols.o"
+  }
+}
