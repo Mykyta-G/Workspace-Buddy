@@ -1,0 +1,67 @@
+{
+  "buildCommand" : {
+    "command" : "build",
+    "skipDependencies" : false,
+    "style" : "buildOnly"
+  },
+  "configuredTargets" : [
+    {
+      "guid" : "bb7743a04b7bf7bbd61f0ceaac676c57ad81e38289101271530bcb3f78b2778b"
+    }
+  ],
+  "containerPath" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/Workspace-Buddy.xcodeproj",
+  "continueBuildingAfterErrors" : false,
+  "dependencyScope" : "workspace",
+  "enableIndexBuildArena" : false,
+  "hideShellScriptEnvironment" : false,
+  "parameters" : {
+    "action" : "build",
+    "activeArchitecture" : "x86_64",
+    "activeRunDestination" : {
+      "disableOnlyActiveArch" : false,
+      "platform" : "macosx",
+      "sdk" : "macosx15.5",
+      "sdkVariant" : "macos",
+      "supportedArchitectures" : [
+        "x86_64h",
+        "x86_64"
+      ],
+      "targetArchitecture" : "x86_64"
+    },
+    "arenaInfo" : {
+      "buildIntermediatesPath" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex",
+      "buildProductsPath" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Products",
+      "derivedDataPath" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build",
+      "indexDataStoreFolderPath" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Index.noindex/DataStore",
+      "indexEnableDataStore" : true,
+      "indexPCHPath" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Index.noindex/PrecompiledHeaders",
+      "pchPath" : "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/PrecompiledHeaders"
+    },
+    "configurationName" : "Release",
+    "overrides" : {
+      "commandLine" : {
+        "table" : {
+          "CODE_SIGN_IDENTITY" : "",
+          "CODE_SIGNING_ALLOWED" : "NO",
+          "CODE_SIGNING_REQUIRED" : "NO"
+        }
+      },
+      "synthesized" : {
+        "table" : {
+          "ACTION" : "build",
+          "COLOR_DIAGNOSTICS" : "YES",
+          "diagnostic_message_length" : "89",
+          "ENABLE_PREVIEWS" : "NO",
+          "ENABLE_XOJIT_PREVIEWS" : "YES",
+          "ONLY_ACTIVE_ARCH" : "YES"
+        }
+      }
+    }
+  },
+  "schemeCommand" : "launch",
+  "showNonLoggedProgress" : true,
+  "useDryRun" : false,
+  "useImplicitDependencies" : true,
+  "useLegacyBuildLocations" : false,
+  "useParallelTargets" : true
+}

@@ -66,9 +66,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             }
         }
         
-        // Check if we have accessibility permissions
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true]
-        let accessEnabled = AXIsProcessTrustedWithOptions(options as CFDictionary)
+        // Check if we have accessibility permissions (only prompt once)
+        let accessEnabled = checkAccessibilityPermissions()
         logger.info("Accessibility enabled: \(accessEnabled)")
         
         // If accessibility is not enabled, show a helpful message
@@ -113,18 +112,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         // Create the popover
         popover = NSPopover()
         popover?.contentSize = NSSize(width: 300, height: 400)
-        popover?.behavior = .applicationDefined  // Changed from .transient to prevent auto-closing
+        popover?.behavior = .transient  // Allow closing by clicking outside
         popover?.contentViewController = NSHostingController(rootView: ContentView().environmentObject(PresetHandler()))
         
         // Set the popover delegate to handle window management
         popover?.delegate = self
         
+        // Set up global event monitor to detect clicks outside the popover
+        setupGlobalEventMonitor()
+        
         // Initialize preset handler
         presetHandler = PresetHandler()
         
-        // Ensure presets are properly loaded and saved on first launch
+        // Ensure presets are properly loaded and saved on first launch (only if needed)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            self?.presetHandler?.forceResetAndMigrate()
+            self?.checkAndLoadPresetsIfNeeded()
         }
         
         // Monitor startup success and auto-repair if needed
@@ -173,6 +175,35 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         }
     }
     
+    private func checkAndLoadPresetsIfNeeded() {
+        let defaults = UserDefaults.standard
+        let hasInitializedPresets = defaults.bool(forKey: "hasInitializedPresets")
+        
+        if !hasInitializedPresets {
+            // First time ever - initialize presets safely
+            logger.info("🔄 First time initialization - setting up presets safely")
+            presetHandler?.safeInitializePresets()
+            defaults.set(true, forKey: "hasInitializedPresets")
+        } else {
+            // Not first time - be conservative about migration
+            logger.info("✅ App has been initialized before - loading existing presets conservatively")
+            // Only do migration if explicitly requested, not automatically
+            presetHandler?.forceRefreshPresets()
+        }
+    }
+    
+    /// Check if presets need to be migrated (only called when explicitly requested)
+    private func checkPresetMigrationIfNeeded() {
+        let defaults = UserDefaults.standard
+        let needsMigrationCheck = defaults.bool(forKey: "needsPresetMigrationCheck")
+        
+        if needsMigrationCheck {
+            logger.info("🔄 Preset migration check needed - performing migration")
+            presetHandler?.forceResetAndMigrate()
+            defaults.set(false, forKey: "needsPresetMigrationCheck")
+        }
+    }
+    
     private func checkFirstLaunchAndShowRecommendation() {
         let defaults = UserDefaults.standard
         let hasLaunchedBefore = defaults.bool(forKey: "hasLaunchedBefore")
@@ -180,7 +211,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         if !hasLaunchedBefore {
             // First launch - show startup recommendation
             DispatchQueue.main.async { [weak self] in
-                self?.showStartupRecommendation()
+                self?.showRunningConfirmation()
             }
             defaults.set(true, forKey: "hasLaunchedBefore")
         } else {
@@ -252,11 +283,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     @objc func togglePopover() {
         if let button = statusItem?.button {
             if popover?.isShown == true {
-                popover?.performClose(nil)
-                // Hide dock icon when popover closes
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    NSApp.setActivationPolicy(.accessory)
-                }
+                closePopover()
             } else {
                 // Show dock icon when popover opens (makes app more discoverable)
                 NSApp.setActivationPolicy(.regular)
@@ -268,8 +295,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                 if let popoverWindow = popover?.contentViewController?.view.window {
                     popoverWindow.level = .floating  // Keep it above other windows
                     popoverWindow.makeKey()  // Make it the key window
-                    
-                    // Prevent the popover from being dismissed by clicking outside
                     popoverWindow.isMovableByWindowBackground = false
                 }
             }
@@ -303,6 +328,128 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         logger.info("System powering off - Mac Preset Handler saving state")
         presetHandler?.savePresets()
     }
+    
+    // MARK: - Accessibility Permissions
+    
+    private func checkAccessibilityPermissions() -> Bool {
+        let defaults = UserDefaults.standard
+        let hasAskedForPermissions = defaults.bool(forKey: "hasAskedForPermissions")
+        
+        if hasAskedForPermissions {
+            // We've already asked before, just check current status without prompting
+            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): false]
+            return AXIsProcessTrustedWithOptions(options as CFDictionary)
+        } else {
+            // First time asking - prompt the user and remember
+            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true]
+            let accessEnabled = AXIsProcessTrustedWithOptions(options as CFDictionary)
+            
+            // Remember that we've asked
+            defaults.set(true, forKey: "hasAskedForPermissions")
+            defaults.set(accessEnabled, forKey: "accessibilityPermissionsGranted")
+            
+            return accessEnabled
+        }
+    }
+    
+    /// Check if accessibility permissions are currently granted (without prompting)
+    private func hasAccessibilityPermissions() -> Bool {
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): false]
+        return AXIsProcessTrustedWithOptions(options as CFDictionary)
+    }
+    
+    // MARK: - Popover Management
+    
+    private var globalEventMonitor: Any?
+    
+    private func setupGlobalEventMonitor() {
+        // Monitor global mouse events to detect clicks outside the popover
+        globalEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .keyDown]) { [weak self] event in
+            self?.handleGlobalEvent(event)
+        }
+    }
+    
+    private func handleGlobalEvent(_ event: NSEvent) {
+        guard let popover = popover, popover.isShown else { return }
+        
+        switch event.type {
+        case .leftMouseDown, .rightMouseDown:
+            handleGlobalMouseEvent(event)
+        case .keyDown:
+            handleGlobalKeyEvent(event)
+        default:
+            break
+        }
+    }
+    
+    private func handleGlobalMouseEvent(_ event: NSEvent) {
+        guard let popover = popover, popover.isShown else { return }
+        
+        // Get the popover window
+        guard let popoverWindow = popover.contentViewController?.view.window else { return }
+        
+        // Convert the global event location to the popover window's coordinate system
+        let eventLocationInWindow = popoverWindow.convertPoint(fromScreen: event.locationInWindow)
+        
+        // Check if the click is outside the popover window
+        if !popoverWindow.frame.contains(eventLocationInWindow) {
+            // Click is outside the popover - close it
+            DispatchQueue.main.async { [weak self] in
+                self?.closePopover()
+            }
+        }
+    }
+    
+    private func handleGlobalKeyEvent(_ event: NSEvent) {
+        // Close popover on Escape key
+        if event.keyCode == 53 { // Escape key
+            DispatchQueue.main.async { [weak self] in
+                self?.closePopover()
+            }
+        }
+    }
+    
+    private func handleStatusButtonClick() {
+        // If popover is already open, close it
+        if popover?.isShown == true {
+            closePopover()
+        } else {
+            // Otherwise, toggle it open
+            togglePopover()
+        }
+    }
+    
+    private func closePopover() {
+        popover?.performClose(nil)
+        // Hide dock icon when popover closes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            NSApp.setActivationPolicy(.accessory)
+        }
+    }
+    
+    // MARK: - NSPopoverDelegate
+    
+    func popoverShouldClose(_ popover: NSPopover) -> Bool {
+        // Allow the popover to close when requested
+        return true
+    }
+    
+    func popoverDidShow(_ notification: Notification) {
+        // Popover is now visible - ensure it's properly configured
+        if let popoverWindow = popover?.contentViewController?.view.window {
+            popoverWindow.level = .floating
+            popoverWindow.makeKey()
+        }
+    }
+    
+    func popoverDidClose(_ notification: Notification) {
+        // Popover has closed - clean up
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            NSApp.setActivationPolicy(.accessory)
+        }
+    }
+    
+
     
     // MARK: - Login Registration
     
@@ -903,7 +1050,108 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     
     /// Request accessibility permissions (called from menu)
     @objc private func requestAccessibilityPermissions() {
-        showAccessibilityPermissionAlert()
+        // Reset permission memory and request again
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: "hasAskedForPermissions")
+        defaults.removeObject(forKey: "accessibilityPermissionsGranted")
+        
+        // Now check permissions (this will prompt the user)
+        let accessEnabled = checkAccessibilityPermissions()
+        
+        if accessEnabled {
+            let alert = NSAlert()
+            alert.messageText = "Permissions Granted"
+            alert.informativeText = "Accessibility permissions have been granted. The app should now work properly with startup registration."
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        }
+    }
+    
+    /// Reset permission memory (called from menu)
+    @objc private func resetPermissionMemory() {
+        let alert = NSAlert()
+        alert.messageText = "Reset Permission Memory"
+        alert.informativeText = "This will reset the app's memory of accessibility permissions. You'll be asked for permissions again on the next restart, but this can help if permissions aren't working correctly."
+        alert.addButton(withTitle: "Reset")
+        alert.addButton(withTitle: "Cancel")
+        alert.alertStyle = .warning
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            let defaults = UserDefaults.standard
+            defaults.removeObject(forKey: "hasAskedForPermissions")
+            defaults.removeObject(forKey: "accessibilityPermissionsGranted")
+            
+            let confirmAlert = NSAlert()
+            confirmAlert.messageText = "Permission Memory Reset"
+            confirmAlert.informativeText = "Permission memory has been reset. You'll be asked for accessibility permissions again on the next restart."
+            confirmAlert.addButton(withTitle: "OK")
+            confirmAlert.runModal()
+        }
+    }
+    
+    /// Open System Settings to Accessibility section (called from menu)
+    @objc private func openAccessibilitySettings() {
+        let task = Process()
+        task.launchPath = "/usr/bin/open"
+        task.arguments = ["-b", "com.apple.systempreferences", "/System/Library/PreferencePanes/Security.prefPane"]
+        
+        do {
+            try task.run()
+            logger.info("✅ Opened System Settings > Privacy & Security")
+        } catch {
+            logger.error("❌ Failed to open System Settings: \(error)")
+            
+            // Fallback: just open System Settings
+            let fallbackTask = Process()
+            fallbackTask.launchPath = "/usr/bin/open"
+            fallbackTask.arguments = ["-b", "com.apple.systempreferences"]
+            
+            do {
+                try fallbackTask.run()
+            } catch {
+                logger.error("❌ Failed to open System Settings (fallback): \(error)")
+            }
+        }
+    }
+    
+    /// Check if preset migration is needed (called from menu)
+    @objc private func checkPresetMigration() {
+        let alert = NSAlert()
+        alert.messageText = "Check Preset Migration"
+        alert.informativeText = "This will check if your presets need to be migrated to the new format without overwriting your current changes."
+        alert.addButton(withTitle: "Check")
+        alert.addButton(withTitle: "Cancel")
+        alert.alertStyle = .informational
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            if presetHandler?.checkMigrationNeeded() == true {
+                let migrationAlert = NSAlert()
+                migrationAlert.messageText = "Migration Needed"
+                migrationAlert.informativeText = "Your presets need to be migrated to the new format. This will preserve your current settings."
+                migrationAlert.addButton(withTitle: "Migrate Now")
+                migrationAlert.addButton(withTitle: "Later")
+                migrationAlert.alertStyle = .warning
+                
+                let migrationResponse = migrationAlert.runModal()
+                if migrationResponse == .alertFirstButtonReturn {
+                    presetHandler?.forceResetAndMigrate()
+                    
+                    let confirmAlert = NSAlert()
+                    confirmAlert.messageText = "Migration Complete"
+                    confirmAlert.informativeText = "Your presets have been successfully migrated to the new format."
+                    confirmAlert.addButton(withTitle: "OK")
+                    confirmAlert.runModal()
+                }
+            } else {
+                let noMigrationAlert = NSAlert()
+                noMigrationAlert.messageText = "No Migration Needed"
+                noMigrationAlert.informativeText = "Your presets are already in the current format. No migration is required."
+                noMigrationAlert.addButton(withTitle: "OK")
+                noMigrationAlert.runModal()
+            }
+        }
     }
     
     /// Remove from startup (called from menu)
@@ -1276,7 +1524,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     @objc private func statusItemClicked(_ sender: Any?) {
         guard let button = statusItem?.button else { return }
         guard let event = NSApp.currentEvent else {
-            togglePopover()
+            handleStatusButtonClick()
             return
         }
         
@@ -1285,7 +1533,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             let popupPoint = NSPoint(x: 0, y: button.bounds.height - 2)
             menu.popUp(positioning: nil, at: popupPoint, in: button)
         } else {
-            togglePopover()
+            handleStatusButtonClick()
         }
     }
     
@@ -1307,6 +1555,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         startupHeader.isEnabled = false
         menu.addItem(startupHeader)
         
+        // Add accessibility permissions status
+        let permissionsStatus = hasAccessibilityPermissions() ? "✅ Accessibility Permissions" : "❌ Accessibility Permissions"
+        let permissionsHeader = NSMenuItem(title: permissionsStatus, action: nil, keyEquivalent: "")
+        permissionsHeader.isEnabled = false
+        menu.addItem(permissionsHeader)
+        
         if !isRegisteredForLogin() {
             let fixStartupItem = NSMenuItem(title: "Fix Startup Registration", action: #selector(fixStartupRegistration), keyEquivalent: "")
             fixStartupItem.target = self
@@ -1315,6 +1569,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             let permissionsItem = NSMenuItem(title: "Request Accessibility Permissions", action: #selector(requestAccessibilityPermissions), keyEquivalent: "")
             permissionsItem.target = self
             menu.addItem(permissionsItem)
+            
+            let resetPermissionsItem = NSMenuItem(title: "Reset Permission Memory", action: #selector(resetPermissionMemory), keyEquivalent: "")
+            resetPermissionsItem.target = self
+            menu.addItem(resetPermissionsItem)
+            
+            let openSystemSettingsItem = NSMenuItem(title: "Open System Settings > Privacy & Security > Accessibility", action: #selector(openAccessibilitySettings), keyEquivalent: "")
+            openSystemSettingsItem.target = self
+            menu.addItem(openSystemSettingsItem)
+            
+            let checkMigrationItem = NSMenuItem(title: "Check if Migration Needed", action: #selector(checkPresetMigration), keyEquivalent: "")
+            checkMigrationItem.target = self
+            menu.addItem(checkMigrationItem)
         } else {
             let removeStartupItem = NSMenuItem(title: "Remove from Startup", action: #selector(removeFromStartup), keyEquivalent: "")
             removeStartupItem.target = self
@@ -1513,6 +1779,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         // Save presets and clean up
         presetHandler?.savePresets()
+        
+        // Clean up global event monitor
+        if let monitor = globalEventMonitor {
+            NSEvent.removeMonitor(monitor)
+            globalEventMonitor = nil
+        }
         
         // Remove the status item
         if let statusItem = statusItem {

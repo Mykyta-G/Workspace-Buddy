@@ -6,7 +6,7 @@
 	<integer>11</integer>
 	<key>logs</key>
 	<dict>
-		<key>094CE443-6564-4E2C-AB9F-A63639A77114</key>
+		<key>051D4BBC-361E-4DDA-85F0-DA1687055037</key>
 		<dict>
 			<key>className</key>
 			<string>IDECommandLineBuildLog</string>
@@ -15,17 +15,17 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
 			<key>fileName</key>
-			<string>094CE443-6564-4E2C-AB9F-A63639A77114.xcactivitylog</string>
+			<string>051D4BBC-361E-4DDA-85F0-DA1687055037.xcactivitylog</string>
 			<key>hasPrimaryLog</key>
 			<true/>
 			<key>primaryObservable</key>
 			<dict>
 				<key>highLevelStatus</key>
-				<string>E</string>
+				<string>W</string>
 				<key>totalNumberOfAnalyzerIssues</key>
 				<integer>0</integer>
 				<key>totalNumberOfErrors</key>
-				<integer>1</integer>
+				<integer>0</integer>
 				<key>totalNumberOfTestFailures</key>
 				<integer>0</integer>
 				<key>totalNumberOfWarnings</key>
@@ -40,13 +40,13 @@
 			<key>signature</key>
 			<string>Building project Workspace-Buddy with scheme Workspace-Buddy and configuration Release</string>
 			<key>timeStartedRecording</key>
-			<real>777404920.55829501</real>
+			<real>777557350.48200405</real>
 			<key>timeStoppedRecording</key>
-			<real>777405046.15077698</real>
+			<real>777557422.78497303</real>
 			<key>title</key>
 			<string>Building project Workspace-Buddy with scheme Workspace-Buddy and configuration Release</string>
 			<key>uniqueIdentifier</key>
-			<string>094CE443-6564-4E2C-AB9F-A63639A77114</string>
+			<string>051D4BBC-361E-4DDA-85F0-DA1687055037</string>
 		</dict>
 	</dict>
 </dict>

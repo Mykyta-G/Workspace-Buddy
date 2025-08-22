@@ -36,7 +36,8 @@ class PresetHandler: ObservableObject {
                 self.presets = Preset.defaults
                 print("✅ UI updated with \(self.presets.count) default presets")
             }
-            savePresets()
+            // Don't automatically save defaults - only save if user explicitly requests it
+            // This prevents overwriting user's saved presets with defaults
         }
     }
     
@@ -49,7 +50,8 @@ class PresetHandler: ObservableObject {
         } else {
             print("Failed to load presets from file, using defaults")
             presets = Preset.defaults
-            savePresets()
+            // Don't automatically save defaults - only save if user explicitly requests it
+            // This prevents overwriting user's saved presets with defaults
         }
         print("Total presets available: \(presets.count)")
     }
@@ -61,6 +63,23 @@ class PresetHandler: ObservableObject {
     /// Save presets to storage
     func savePresets() {
         savePresetsToFile(presets)
+    }
+    
+    /// Explicitly save user presets (called when user makes changes)
+    func saveUserPresets() {
+        print("💾 User explicitly requested to save presets")
+        savePresetsToFile(presets)
+    }
+    
+    /// Save presets only if they're not the default presets
+    func savePresetsIfNotDefaults() {
+        // Only save if presets are different from defaults
+        if presets != Preset.defaults {
+            print("💾 Auto-saving non-default presets")
+            savePresetsToFile(presets)
+        } else {
+            print("⚠️  Not auto-saving default presets - user should save manually")
+        }
     }
     
     /// Add a new preset
@@ -832,19 +851,31 @@ class PresetHandler: ObservableObject {
     
     /// Setup automatic saving when presets change
     private func setupBindings() {
-        // Save presets whenever they change
+        // Save presets whenever they change, but be conservative
         $presets
             .sink { [weak self] newPresets in
-                print("🔄 Presets changed, saving \(newPresets.count) presets...")
-                self?.savePresets()
+                print("🔄 Presets changed, checking if should save...")
+                // Only auto-save if presets are not defaults
+                if newPresets != Preset.defaults {
+                    print("💾 Auto-saving non-default presets...")
+                    self?.savePresets()
+                } else {
+                    print("⚠️  Not auto-saving default presets - user should save manually")
+                }
             }
             .store(in: &cancellables)
         
-        // Also save when current preset changes
+        // Also save when current preset changes, but be conservative
         $currentPreset
             .sink { [weak self] _ in
-                print("🔄 Current preset changed, saving presets...")
-                self?.savePresets()
+                print("🔄 Current preset changed, checking if should save...")
+                // Only auto-save if current presets are not defaults
+                if let currentPresets = self?.presets, currentPresets != Preset.defaults {
+                    print("💾 Auto-saving non-default presets...")
+                    self?.savePresets()
+                } else {
+                    print("⚠️  Not auto-saving default presets - user should save manually")
+                }
             }
             .store(in: &cancellables)
     }
@@ -916,28 +947,120 @@ class PresetHandler: ObservableObject {
                     print("✅ Migration successful, updating presets")
                     DispatchQueue.main.async {
                         self.presets = migratedPresets
-                        self.savePresets()
+                        // Don't auto-save migrated presets - let user decide
+                        print("✅ Migration complete - presets loaded but not auto-saved")
                     }
                 } else {
-                    print("❌ Migration failed, using default presets")
+                    print("❌ Migration failed, but preserving existing presets")
+                    // Don't overwrite with defaults - preserve what user has
                     DispatchQueue.main.async {
-                        self.presets = Preset.defaults
-                        self.savePresets()
+                        // Keep current presets if they exist, otherwise use defaults without saving
+                        if self.presets.isEmpty {
+                            self.presets = Preset.defaults
+                            print("⚠️  Using defaults temporarily - user should save manually")
+                        } else {
+                            print("✅ Keeping existing presets despite migration failure")
+                        }
                     }
                 }
             } catch {
-                print("❌ Error reading existing file: \(error), using defaults")
+                print("❌ Error reading existing file: \(error), preserving current presets")
                 DispatchQueue.main.async {
-                    self.presets = Preset.defaults
-                    self.savePresets()
+                    // Keep current presets if they exist, otherwise use defaults without saving
+                    if self.presets.isEmpty {
+                        self.presets = Preset.defaults
+                        print("⚠️  Using defaults temporarily - user should save manually")
+                    } else {
+                        print("✅ Keeping existing presets despite read error")
+                    }
                 }
             }
         } else {
-            print("📂 No existing presets file, using defaults")
+            print("📂 No existing presets file, using defaults temporarily")
             DispatchQueue.main.async {
                 self.presets = Preset.defaults
-                self.savePresets()
+                // Don't auto-save defaults - let user decide when to save
+                print("⚠️  Using defaults temporarily - user should save manually")
             }
+        }
+    }
+    
+    /// Safe initialization that doesn't overwrite existing presets
+    func safeInitializePresets() {
+        print("🔄 Safe initialization - checking for existing presets...")
+        
+        // Try to load existing presets first
+        if let loadedPresets = loadPresetsFromFile() {
+            print("✅ Found existing presets, using them")
+            DispatchQueue.main.async {
+                self.presets = loadedPresets
+            }
+        } else {
+            print("📂 No existing presets found, using defaults temporarily")
+            DispatchQueue.main.async {
+                self.presets = Preset.defaults
+                // Don't auto-save defaults - let user decide when to save
+                print("⚠️  Using defaults temporarily - user should save manually")
+            }
+        }
+    }
+    
+    /// Check if presets need to be migrated without overwriting
+    func checkMigrationNeeded() -> Bool {
+        print("🔍 Checking if migration is needed...")
+        
+        guard let documentsPath = getDocumentsDirectory() else {
+            print("❌ Could not get documents directory for migration check")
+            return false
+        }
+        
+        let fileURL = documentsPath.appendingPathComponent(presetsFile)
+        
+        // If no file exists, no migration needed
+        guard fileManager.fileExists(atPath: fileURL.path) else {
+            print("📂 No presets file exists, no migration needed")
+            return false
+        }
+        
+        do {
+            let data = try Data(contentsOf: fileURL)
+            
+            // Try to decode as new format
+            do {
+                let _ = try JSONDecoder().decode([Preset].self, from: data)
+                print("✅ File is already in new format, no migration needed")
+                return false
+            } catch {
+                print("🔄 File appears to be in old format, migration needed")
+                return true
+            }
+        } catch {
+            print("❌ Error reading file for migration check: \(error)")
+            return false
+        }
+    }
+    
+    /// Check if current presets are different from defaults (user-modified)
+    func arePresetsUserModified() -> Bool {
+        return presets != Preset.defaults
+    }
+    
+    /// Check if presets need to be saved (are different from what's on disk)
+    func doPresetsNeedSaving() -> Bool {
+        guard let documentsPath = getDocumentsDirectory() else { return false }
+        let fileURL = documentsPath.appendingPathComponent(presetsFile)
+        
+        // If no file exists, presets need saving
+        guard fileManager.fileExists(atPath: fileURL.path) else { return true }
+        
+        do {
+            let data = try Data(contentsOf: fileURL)
+            if let savedPresets = try? JSONDecoder().decode([Preset].self, from: data) {
+                return presets != savedPresets
+            }
+            return true // If can't decode, assume they need saving
+        } catch {
+            return true // If can't read, assume they need saving
         }
     }
     

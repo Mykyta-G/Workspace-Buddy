@@ -307,6 +307,7 @@ typedef unsigned int swift_uint4  __attribute__((__ext_vector_type__(4)));
 #if defined(__OBJC__)
 
 @class NSNotification;
+@class NSPopover;
 @class NSApplication;
 SWIFT_CLASS("_TtC15Workspace_Buddy11AppDelegate")
 @interface AppDelegate : NSObject <NSApplicationDelegate, NSPopoverDelegate>
@@ -315,6 +316,9 @@ SWIFT_CLASS("_TtC15Workspace_Buddy11AppDelegate")
 - (void)systemWillSleep:(NSNotification * _Nonnull)notification;
 - (void)systemDidWake:(NSNotification * _Nonnull)notification;
 - (void)systemWillPowerOff:(NSNotification * _Nonnull)notification;
+- (BOOL)popoverShouldClose:(NSPopover * _Nonnull)popover SWIFT_WARN_UNUSED_RESULT;
+- (void)popoverDidShow:(NSNotification * _Nonnull)notification;
+- (void)popoverDidClose:(NSNotification * _Nonnull)notification;
 /// Manual method to force re-register for startup (can be called from UI)
 - (void)forceReRegisterForStartup;
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication * _Nonnull)sender SWIFT_WARN_UNUSED_RESULT;
