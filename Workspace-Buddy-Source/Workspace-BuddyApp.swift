@@ -66,6 +66,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             }
         }
         
+        // Clean up any existing log files that might have been created
+        cleanupExistingLogFiles()
+        
+        // Verify and fix LaunchAgent files to prevent log file creation
+        verifyAndFixLaunchAgentFiles()
+        
         // Check if we have accessibility permissions (only prompt once)
         let accessEnabled = checkAccessibilityPermissions()
         logger.info("Accessibility enabled: \(accessEnabled)")
@@ -178,14 +184,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private func checkAndLoadPresetsIfNeeded() {
         let defaults = UserDefaults.standard
         let hasInitializedPresets = defaults.bool(forKey: "hasInitializedPresets")
+        let hasUserCreatedPresets = defaults.bool(forKey: "hasUserCreatedPresets")
         
         if !hasInitializedPresets {
             // First time ever - initialize presets safely
             logger.info("🔄 First time initialization - setting up presets safely")
             presetHandler?.safeInitializePresets()
             defaults.set(true, forKey: "hasInitializedPresets")
+        } else if hasUserCreatedPresets {
+            // We have user-created presets - preserve them
+            logger.info("✅ App has user-created presets - preserving them")
+            presetHandler?.forceRefreshPresets()
         } else {
-            // Not first time - be conservative about migration
+            // Not first time and no user presets - be conservative about migration
             logger.info("✅ App has been initialized before - loading existing presets conservatively")
             // Only do migration if explicitly requested, not automatically
             presetHandler?.forceRefreshPresets()
@@ -306,12 +317,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     @objc func systemWillSleep(_ notification: Notification) {
         logger.info("System going to sleep - Mac Preset Handler will continue monitoring")
         // Save current state
-        presetHandler?.savePresets()
+        presetHandler?.forceSavePresets()
         
         // Ensure the app stays active during sleep
         DispatchQueue.main.async { [weak self] in
             // Save presets before sleep
-            self?.presetHandler?.savePresets()
+            self?.presetHandler?.forceSavePresets()
         }
     }
     
@@ -326,7 +337,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     
     @objc func systemWillPowerOff(_ notification: Notification) {
         logger.info("System powering off - Mac Preset Handler saving state")
-        presetHandler?.savePresets()
+        presetHandler?.forceSavePresets()
     }
     
     // MARK: - Accessibility Permissions
@@ -334,19 +345,40 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private func checkAccessibilityPermissions() -> Bool {
         let defaults = UserDefaults.standard
         let hasAskedForPermissions = defaults.bool(forKey: "hasAskedForPermissions")
+        let permissionsGranted = defaults.bool(forKey: "accessibilityPermissionsGranted")
         
-        if hasAskedForPermissions {
-            // We've already asked before, just check current status without prompting
+        // If we've already asked and permissions were granted, just check current status without prompting
+        if hasAskedForPermissions && permissionsGranted {
             let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): false]
-            return AXIsProcessTrustedWithOptions(options as CFDictionary)
+            let currentStatus = AXIsProcessTrustedWithOptions(options as CFDictionary)
+            
+            // Update stored status if it changed
+            if currentStatus != permissionsGranted {
+                defaults.set(currentStatus, forKey: "accessibilityPermissionsGranted")
+            }
+            
+            return currentStatus
+        } else if hasAskedForPermissions && !permissionsGranted {
+            // We've asked before but permissions weren't granted - don't ask again
+            // Just check current status silently
+            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): false]
+            let currentStatus = AXIsProcessTrustedWithOptions(options as CFDictionary)
+            
+            // Update stored status
+            defaults.set(currentStatus, forKey: "accessibilityPermissionsGranted")
+            
+            return currentStatus
         } else {
             // First time asking - prompt the user and remember
             let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true]
             let accessEnabled = AXIsProcessTrustedWithOptions(options as CFDictionary)
             
-            // Remember that we've asked
+            // Remember that we've asked and the result
             defaults.set(true, forKey: "hasAskedForPermissions")
             defaults.set(accessEnabled, forKey: "accessibilityPermissionsGranted")
+            
+            // Also store the timestamp to avoid asking too frequently
+            defaults.set(Date(), forKey: "lastPermissionRequestDate")
             
             return accessEnabled
         }
@@ -356,6 +388,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private func hasAccessibilityPermissions() -> Bool {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): false]
         return AXIsProcessTrustedWithOptions(options as CFDictionary)
+    }
+    
+    /// Check if we should show permission alerts (avoid showing too frequently)
+    private func shouldShowPermissionAlerts() -> Bool {
+        let defaults = UserDefaults.standard
+        let lastRequest = defaults.object(forKey: "lastPermissionRequestDate") as? Date
+        
+        // If we've never asked, or it's been more than 24 hours, we can show alerts
+        guard let lastRequest = lastRequest else { return true }
+        
+        let timeSinceLastRequest = Date().timeIntervalSince(lastRequest)
+        let twentyFourHours: TimeInterval = 24 * 60 * 60
+        
+        return timeSinceLastRequest > twentyFourHours
     }
     
     // MARK: - Popover Management
@@ -632,10 +678,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             <true/>
             <key>ProcessType</key>
             <string>Background</string>
-            <key>StandardOutPath</key>
-            <string>/tmp/workspacebuddy.log</string>
-            <key>StandardErrorPath</key>
-            <string>/tmp/workspacebuddy.error.log</string>
         </dict>
         </plist>
         """
@@ -665,7 +707,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         
         let plistContent = """
         <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTD/PropertyList-1.0.dtd">
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
         <plist version="1.0">
         <dict>
             <key>Label</key>
@@ -680,10 +722,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             <true/>
             <key>ProcessType</key>
             <string>Background</string>
-            <key>StandardOutPath</key>
-            <string>/tmp/workspacebuddy.log</string>
-            <key>StandardErrorPath</key>
-            <string>/tmp/workspacebuddy.error.log</string>
             <key>WorkingDirectory</key>
             <string>\(appPath)/Contents</string>
             <key>EnvironmentVariables</key>
@@ -691,6 +729,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                 <key>PATH</key>
                 <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
             </dict>
+            <key>LimitLoadToSessionType</key>
+            <array>
+                <string>Aqua</string>
+            </array>
+            <key>ThrottleInterval</key>
+            <integer>10</integer>
         </dict>
         </plist>
         """
@@ -721,6 +765,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         if verifyProcess.terminationStatus != 0 {
             throw NSError(domain: "LaunchAgent", code: 1, userInfo: [NSLocalizedDescriptionKey: "LaunchAgent verification failed"])
         }
+        
+        // Store successful registration to avoid re-prompting
+        let defaults = UserDefaults.standard
+        defaults.set(true, forKey: "startupRegistrationSuccessful")
+        defaults.set(Date(), forKey: "lastStartupRegistrationDate")
         
         logger.info("✅ LaunchAgent registration and verification successful")
     }
@@ -764,7 +813,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         if ! pgrep -f "Workspace-Buddy" > /dev/null; then
             # Launch the app
             open "\(appPath)"
-            echo "$(date): Workspace-Buddy started via startup script" >> /tmp/workspacebuddy-startup.log
         fi
         """
         
@@ -1778,7 +1826,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     // Handle when the app is about to terminate (like when terminal closes)
     func applicationWillTerminate(_ notification: Notification) {
         // Save presets and clean up
-        presetHandler?.savePresets()
+        presetHandler?.forceSavePresets()
         
         // Clean up global event monitor
         if let monitor = globalEventMonitor {
@@ -1793,5 +1841,76 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         
         // Close the popover if it's open
         popover?.performClose(nil)
+    }
+    
+    /// Clean up any existing log files that might have been created
+    private func cleanupExistingLogFiles() {
+        logger.info("🧹 Cleaning up any existing log files...")
+        
+        let logFiles = [
+            "/tmp/workspacebuddy.log",
+            "/tmp/workspacebuddy.error.log", 
+            "/tmp/workspacebuddy-startup.log"
+        ]
+        
+        for logFile in logFiles {
+            if FileManager.default.fileExists(atPath: logFile) {
+                do {
+                    try FileManager.default.removeItem(atPath: logFile)
+                    logger.info("✅ Removed log file: \(logFile)")
+                } catch {
+                    logger.warning("⚠️ Could not remove log file \(logFile): \(error)")
+                }
+            }
+        }
+    }
+    
+    /// Verify and fix LaunchAgent plist files to ensure they don't create log files
+    private func verifyAndFixLaunchAgentFiles() {
+        logger.info("🔍 Verifying LaunchAgent files for log file creation...")
+        
+        let bundleID = Bundle.main.bundleIdentifier ?? "com.workspacebuddy.app"
+        let plistPaths = [
+            "~/Library/LaunchAgents/\(bundleID).plist",
+            "~/Library/LaunchAgents/com.workspacebuddy.startupscript.plist"
+        ]
+        
+        for plistPath in plistPaths {
+            let expandedPath = (plistPath as NSString).expandingTildeInPath
+            
+            if FileManager.default.fileExists(atPath: expandedPath) {
+                do {
+                    let data = try Data(contentsOf: URL(fileURLWithPath: expandedPath))
+                    let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any]
+                    
+                    if let plist = plist {
+                        var needsUpdate = false
+                        var updatedPlist = plist
+                        
+                        // Check for log file paths and remove them
+                        if plist["StandardOutPath"] != nil {
+                            updatedPlist.removeValue(forKey: "StandardOutPath")
+                            needsUpdate = true
+                            logger.info("⚠️ Found StandardOutPath in \(plistPath) - removing")
+                        }
+                        
+                        if plist["StandardErrorPath"] != nil {
+                            updatedPlist.removeValue(forKey: "StandardErrorPath")
+                            needsUpdate = true
+                            logger.info("⚠️ Found StandardErrorPath in \(plistPath) - removing")
+                        }
+                        
+                        // Update the plist if needed
+                        if needsUpdate {
+                            let updatedData = try PropertyListSerialization.data(fromPropertyList: updatedPlist, format: .xml, options: 0)
+                            try updatedData.write(to: URL(fileURLWithPath: expandedPath))
+                            logger.info("✅ Updated \(plistPath) to remove log file paths")
+                        }
+                    }
+                } catch {
+                    logger.warning("⚠️ Could not verify/fix \(plistPath): \(error)")
+                }
+            }
+        }
     }
 }

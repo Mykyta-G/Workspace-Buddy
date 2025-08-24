@@ -234,6 +234,43 @@ struct ContentView: View {
                 }
                 
                 Spacer()
+                
+                // Preserve manual changes toggle
+                VStack(alignment: .trailing, spacing: 2) {
+                    Toggle("Preserve Manual Changes", isOn: Binding(
+                        get: { presetHandler.shouldPreserveManualChanges() },
+                        set: { presetHandler.setPreserveManualChanges($0) }
+                    ))
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .font(.caption)
+                    
+                    Text("Keeps your app positions")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                .frame(width: 200)
+                
+                // Save button - only show if presets need saving
+                if presetHandler.doPresetsNeedSaving() {
+                    Button(action: {
+                        presetHandler.saveUserPresets()
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "square.and.arrow.down")
+                                .font(.caption)
+                            Text("Save")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.orange)
+                        .cornerRadius(6)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
             }
         }
     }

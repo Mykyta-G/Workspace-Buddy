@@ -31,7 +31,16 @@ class PresetHandler: ObservableObject {
                 print("✅ UI updated with \(self.presets.count) presets")
             }
         } else {
-            print("⚠️  Failed to load presets from file, using defaults")
+            print("⚠️  Failed to load presets from file, checking if we have existing presets...")
+            
+            // Check if we have existing presets in memory that should be preserved
+            if !presets.isEmpty && presets != Preset.defaults {
+                print("✅ Preserving existing user-created presets (\(presets.count) presets)")
+                // Don't overwrite with defaults - keep what the user has
+                return
+            }
+            
+            print("⚠️  No existing presets found, using defaults temporarily")
             DispatchQueue.main.async {
                 self.presets = Preset.defaults
                 print("✅ UI updated with \(self.presets.count) default presets")
@@ -48,7 +57,16 @@ class PresetHandler: ObservableObject {
             print("Successfully loaded \(loadedPresets.count) presets from file")
             presets = loadedPresets
         } else {
-            print("Failed to load presets from file, using defaults")
+            print("Failed to load presets from file, checking if we have existing presets...")
+            
+            // Check if we have existing presets in memory that should be preserved
+            if !presets.isEmpty && presets != Preset.defaults {
+                print("✅ Preserving existing user-created presets (\(presets.count) presets)")
+                // Don't overwrite with defaults - keep what the user has
+                return
+            }
+            
+            print("Failed to load presets from file, using defaults temporarily")
             presets = Preset.defaults
             // Don't automatically save defaults - only save if user explicitly requests it
             // This prevents overwriting user's saved presets with defaults
@@ -69,6 +87,36 @@ class PresetHandler: ObservableObject {
     func saveUserPresets() {
         print("💾 User explicitly requested to save presets")
         savePresetsToFile(presets)
+        
+        // Mark that we have user-created presets
+        let defaults = UserDefaults.standard
+        defaults.set(true, forKey: "hasUserCreatedPresets")
+        defaults.set(Date(), forKey: "lastPresetSaveDate")
+        print("✅ Marked presets as user-created and saved timestamp")
+    }
+    
+    /// Force save presets to ensure they persist (called during app lifecycle events)
+    func forceSavePresets() {
+        print("💾 Force saving presets to ensure persistence...")
+        
+        // Only save if we have non-default presets
+        if presets != Preset.defaults {
+            savePresetsToFile(presets)
+            
+            // Mark that we have user-created presets
+            let defaults = UserDefaults.standard
+            defaults.set(true, forKey: "hasUserCreatedPresets")
+            defaults.set(Date(), forKey: "lastPresetSaveDate")
+            print("✅ Force saved user presets and updated timestamp")
+        } else {
+            print("⚠️  Not force saving default presets")
+        }
+    }
+    
+    /// Check if we have user-created presets that should be preserved
+    func hasUserCreatedPresets() -> Bool {
+        let defaults = UserDefaults.standard
+        return defaults.bool(forKey: "hasUserCreatedPresets") || presets != Preset.defaults
     }
     
     /// Save presets only if they're not the default presets
@@ -308,6 +356,40 @@ class PresetHandler: ObservableObject {
         }
     }
     
+    /// Restore window positions while respecting current app state and manual changes
+    private func restoreWindowPositionsRespectingCurrentState(for preset: Preset) async {
+        // Wait a bit for apps to fully launch and create their windows
+        try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+        
+        for appWithPosition in preset.apps {
+            let appName = appWithPosition.name
+            let presetPositions = appWithPosition.windowPositions
+            
+            // Find the running app
+            let runningApps = NSWorkspace.shared.runningApplications
+            if let app = runningApps.first(where: { $0.localizedName == appName }) {
+                
+                // Check if this app is already running and has been manually positioned
+                let currentPositions = captureCurrentWindowPositions()
+                let hasManualPositions = currentPositions[appName] != nil && !currentPositions[appName]!.isEmpty
+                
+                if hasManualPositions {
+                    print("⚠️ App \(appName) has manual positions - preserving them instead of using preset")
+                    // Don't override manual positions - preserve what the user has done
+                    continue
+                }
+                
+                // Only restore preset positions if the app doesn't have manual positions
+                if !presetPositions.isEmpty {
+                    print("✅ Restoring preset positions for \(appName) (no manual positions detected)")
+                    restoreWindowPositionsForApp(app, positions: presetPositions)
+                } else {
+                    print("ℹ️ No preset positions for \(appName) - leaving as is")
+                }
+            }
+        }
+    }
+    
     /// Restore window positions for a specific app using Accessibility API
     private func restoreWindowPositionsForApp(_ app: NSRunningApplication, positions: [WindowPosition]) {
         // Get the app's accessibility element
@@ -374,6 +456,10 @@ class PresetHandler: ObservableObject {
         }
         
         do {
+            // Check user preference for preserving manual changes
+            let defaults = UserDefaults.standard
+            let preserveManualChanges = defaults.bool(forKey: "preserveManualChanges")
+            
             // Capture current window positions before switching
             let currentPositions = captureCurrentWindowPositions()
             
@@ -417,8 +503,12 @@ class PresetHandler: ObservableObject {
             print("Apps to launch: \(preset.apps.map { $0.name })")
             try await launchApps(from: preset)
             
-            // Restore window positions for the new preset
-            await restoreWindowPositions(for: preset)
+            // Restore window positions for the new preset, but respect user preference and app state
+            if !preserveManualChanges {
+                await restoreWindowPositionsRespectingCurrentState(for: preset)
+            } else {
+                print("⚠️ Preserving manual changes - not restoring preset window positions")
+            }
             
             await MainActor.run {
                 currentPreset = preset
@@ -440,6 +530,20 @@ class PresetHandler: ObservableObject {
         print("Starting to launch apps for preset: \(preset.name)")
         for appWithPosition in preset.apps {
             print("Launching app: \(appWithPosition.name)")
+            
+            // Check if app is already running
+            let runningApps = NSWorkspace.shared.runningApplications
+            let isAlreadyRunning = runningApps.contains { app in
+                app.localizedName == appWithPosition.name
+            }
+            
+            if isAlreadyRunning {
+                print("ℹ️ App \(appWithPosition.name) is already running - preserving current state")
+                // Don't relaunch - preserve current window positions and state
+                continue
+            }
+            
+            // Only launch if not already running
             try await launchApp(named: appWithPosition.name)
             
             // If this is a browser app with websites, open them
@@ -855,10 +959,23 @@ class PresetHandler: ObservableObject {
         $presets
             .sink { [weak self] newPresets in
                 print("🔄 Presets changed, checking if should save...")
-                // Only auto-save if presets are not defaults
+                
+                // Only auto-save if presets are not defaults AND we have a valid presets file
                 if newPresets != Preset.defaults {
-                    print("💾 Auto-saving non-default presets...")
-                    self?.savePresets()
+                    // Check if we have a valid presets file to save to
+                    if let documentsPath = self?.getDocumentsDirectory() {
+                        let fileURL = documentsPath.appendingPathComponent(self?.presetsFile ?? "presets.json")
+                        let fileExists = FileManager.default.fileExists(atPath: fileURL.path)
+                        
+                        if fileExists {
+                            print("💾 Auto-saving non-default presets...")
+                            self?.savePresets()
+                        } else {
+                            print("⚠️  No presets file exists yet - waiting for user to save manually")
+                        }
+                    } else {
+                        print("⚠️  Could not get documents directory - waiting for user to save manually")
+                    }
                 } else {
                     print("⚠️  Not auto-saving default presets - user should save manually")
                 }
@@ -996,6 +1113,15 @@ class PresetHandler: ObservableObject {
                 self.presets = loadedPresets
             }
         } else {
+            print("📂 No existing presets file found, checking if we have presets in memory...")
+            
+            // Check if we already have user-created presets in memory
+            if !presets.isEmpty && presets != Preset.defaults {
+                print("✅ Preserving existing user-created presets in memory (\(presets.count) presets)")
+                // Don't overwrite with defaults - keep what the user has
+                return
+            }
+            
             print("📂 No existing presets found, using defaults temporarily")
             DispatchQueue.main.async {
                 self.presets = Preset.defaults
@@ -1062,6 +1188,26 @@ class PresetHandler: ObservableObject {
         } catch {
             return true // If can't read, assume they need saving
         }
+    }
+    
+    /// Set whether to preserve manual changes when switching presets
+    func setPreserveManualChanges(_ preserve: Bool) {
+        let defaults = UserDefaults.standard
+        defaults.set(preserve, forKey: "preserveManualChanges")
+        print("💾 Set preserve manual changes preference to: \(preserve)")
+    }
+    
+    /// Get whether manual changes should be preserved
+    func shouldPreserveManualChanges() -> Bool {
+        let defaults = UserDefaults.standard
+        return defaults.bool(forKey: "preserveManualChanges")
+    }
+    
+    /// Toggle the preserve manual changes preference
+    func togglePreserveManualChanges() -> Bool {
+        let current = shouldPreserveManualChanges()
+        setPreserveManualChanges(!current)
+        return !current
     }
     
     /// Get diagnostic information about the current presets state
