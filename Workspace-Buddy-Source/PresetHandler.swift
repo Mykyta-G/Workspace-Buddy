@@ -15,8 +15,18 @@ class PresetHandler: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     init() {
+        print("🚀 BULLETPROOF INIT: Initializing PresetHandler...")
+        
+        // Load presets from storage
         loadPresets()
+        
+        // Setup automatic saving when presets change
         setupBindings()
+        
+        // Start periodic save mechanism for ultimate protection
+        startPeriodicSave()
+        
+        print("✅ BULLETPROOF INIT: PresetHandler initialized with all protection layers")
     }
     
     // MARK: - Preset Management
@@ -50,37 +60,81 @@ class PresetHandler: ObservableObject {
         }
     }
     
-    /// Load presets from storage or create defaults
+    /// Load presets from storage or create defaults - BULLETPROOF VERSION
     func refreshPresets() {
-        print("Refreshing presets...")
+        print("🔄 BULLETPROOF REFRESH: Starting preset refresh...")
+        
+        // Layer 1: Try to load from file
         if let loadedPresets = loadPresetsFromFile() {
-            print("Successfully loaded \(loadedPresets.count) presets from file")
+            print("✅ BULLETPROOF REFRESH: Successfully loaded \(loadedPresets.count) presets from file")
             presets = loadedPresets
         } else {
-            print("Failed to load presets from file, checking if we have existing presets...")
+            print("⚠️  BULLETPROOF REFRESH: Failed to load from file, trying UserDefaults backup...")
             
-            // Check if we have existing presets in memory that should be preserved
-            if !presets.isEmpty && presets != Preset.defaults {
-                print("✅ Preserving existing user-created presets (\(presets.count) presets)")
-                // Don't overwrite with defaults - keep what the user has
-                return
+            // Layer 2: Try to restore from UserDefaults backup
+            if let recoveredPresets = recoverPresetsFromBackup() {
+                print("✅ Recovered \(recoveredPresets.count) presets from backup")
+                presets = recoveredPresets
+                
+                // Immediately save the recovered presets to file
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    print("💾 Saving recovered presets to file...")
+                    self.savePresetsToFile(self.presets)
+                }
+            } else {
+                print("⚠️ No backup available, checking memory...")
+                
+                // Layer 3: Check if we have existing presets in memory that should be preserved
+                if !presets.isEmpty && presets != Preset.defaults {
+                    print("✅ BULLETPROOF REFRESH: Preserving existing user-created presets (\(presets.count) presets)")
+                    // Don't overwrite with defaults - keep what the user has
+                    return
+                }
+                
+                print("⚠️  BULLETPROOF REFRESH: No presets found, using defaults temporarily")
+                presets = Preset.defaults
+                // Don't automatically save defaults - only save if user explicitly requests it
+                // This prevents overwriting user's saved presets with defaults
             }
-            
-            print("Failed to load presets from file, using defaults temporarily")
-            presets = Preset.defaults
-            // Don't automatically save defaults - only save if user explicitly requests it
-            // This prevents overwriting user's saved presets with defaults
         }
-        print("Total presets available: \(presets.count)")
+        print("📊 BULLETPROOF REFRESH: Total presets available: \(presets.count)")
     }
     
     private func loadPresets() {
         refreshPresets()
     }
     
-    /// Save presets to storage
+    /// Save presets to storage - BULLETPROOF VERSION
     func savePresets() {
+        print("💾 Starting save operation...")
+        
+        // Layer 1: Immediate save
         savePresetsToFile(presets)
+        
+        // Layer 2: Backup save after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            print("💾 Layer 2 - Backup save...")
+            self.savePresetsToFile(self.presets)
+        }
+        
+        // Layer 3: Verification save after longer delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            print("💾 BULLETPROOF SAVE: Layer 3 - Verification save...")
+            if self.doPresetsNeedSaving() {
+                print("⚠️  BULLETPROOF SAVE: Verification failed, retrying...")
+                self.savePresetsToFile(self.presets)
+            } else {
+                print("✅ BULLETPROOF SAVE: All layers successful")
+            }
+        }
+        
+        // Layer 4: Force save to UserDefaults as backup
+        let defaults = UserDefaults.standard
+        if let data = try? JSONEncoder().encode(presets) {
+            defaults.set(data, forKey: "presets_backup_data")
+            defaults.set(Date(), forKey: "presets_backup_timestamp")
+            print("💾 BULLETPROOF SAVE: Layer 4 - UserDefaults backup created")
+        }
     }
     
     /// Explicitly save user presets (called when user makes changes)
@@ -146,11 +200,19 @@ class PresetHandler: ObservableObject {
     
     /// Delete a preset
     func deletePreset(_ preset: Preset) {
+        print("🗑️ Deleting preset: \(preset.name)")
         presets.removeAll { $0.id == preset.id }
         if currentPreset?.id == preset.id {
             currentPreset = nil
         }
+        print("💾 Saving presets after deletion...")
         savePresets()
+        
+        // Force save to ensure deletion is persisted
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            print("🔄 Force saving after preset deletion...")
+            self.forceSavePresets()
+        }
     }
     
     /// Add an application to a preset
@@ -456,11 +518,7 @@ class PresetHandler: ObservableObject {
         }
         
         do {
-            // Check user preference for preserving manual changes
-            let defaults = UserDefaults.standard
-            let preserveManualChanges = defaults.bool(forKey: "preserveManualChanges")
-            
-            // Capture current window positions before switching
+            // Always preserve manual changes - capture current window positions before switching
             let currentPositions = captureCurrentWindowPositions()
             
             // Update the current preset with window positions if it exists
@@ -503,12 +561,8 @@ class PresetHandler: ObservableObject {
             print("Apps to launch: \(preset.apps.map { $0.name })")
             try await launchApps(from: preset)
             
-            // Restore window positions for the new preset, but respect user preference and app state
-            if !preserveManualChanges {
-                await restoreWindowPositionsRespectingCurrentState(for: preset)
-            } else {
-                print("⚠️ Preserving manual changes - not restoring preset window positions")
-            }
+            // Always restore window positions while respecting manual changes
+            await restoreWindowPositionsRespectingCurrentState(for: preset)
             
             await MainActor.run {
                 currentPreset = preset
@@ -953,45 +1007,74 @@ class PresetHandler: ObservableObject {
     
     // MARK: - Bindings
     
-    /// Setup automatic saving when presets change
+    /// Setup automatic saving when presets change - BULLETPROOF VERSION
     private func setupBindings() {
-        // Save presets whenever they change, but be conservative
+        // Save presets whenever they change - be aggressive about saving user changes
         $presets
             .sink { [weak self] newPresets in
-                print("🔄 Presets changed, checking if should save...")
+                print("🔄 BULLETPROOF BINDINGS: Presets changed, checking if should save...")
+                print("📊 New presets count: \(newPresets.count)")
+                print("📊 Current presets count: \(self?.presets.count ?? 0)")
                 
-                // Only auto-save if presets are not defaults AND we have a valid presets file
+                // Always save if presets are not defaults (user has made changes)
                 if newPresets != Preset.defaults {
-                    // Check if we have a valid presets file to save to
-                    if let documentsPath = self?.getDocumentsDirectory() {
-                        let fileURL = documentsPath.appendingPathComponent(self?.presetsFile ?? "presets.json")
-                        let fileExists = FileManager.default.fileExists(atPath: fileURL.path)
-                        
-                        if fileExists {
-                            print("💾 Auto-saving non-default presets...")
-                            self?.savePresets()
-                        } else {
-                            print("⚠️  No presets file exists yet - waiting for user to save manually")
+                    print("💾 BULLETPROOF BINDINGS: Auto-saving user-modified presets...")
+                    self?.savePresets()
+                    
+                    // Mark that we have user-created presets
+                    let defaults = UserDefaults.standard
+                    defaults.set(true, forKey: "hasUserCreatedPresets")
+                    defaults.set(Date(), forKey: "lastPresetSaveDate")
+                    print("✅ BULLETPROOF BINDINGS: Marked presets as user-created and saved timestamp")
+                    
+                    // Multiple verification saves to ensure nothing is lost
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        if let self = self {
+                            print("🔍 BULLETPROOF BINDINGS: Verification save 1...")
+                            if self.doPresetsNeedSaving() {
+                                print("⚠️  BULLETPROOF BINDINGS: Verification 1 failed, retrying...")
+                                self.savePresets()
+                            }
                         }
-                    } else {
-                        print("⚠️  Could not get documents directory - waiting for user to save manually")
+                    }
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        if let self = self {
+                            print("🔍 BULLETPROOF BINDINGS: Verification save 2...")
+                            if self.doPresetsNeedSaving() {
+                                print("⚠️  BULLETPROOF BINDINGS: Verification 2 failed, retrying...")
+                                self.savePresets()
+                            }
+                        }
+                    }
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        if let self = self {
+                            print("🔍 BULLETPROOF BINDINGS: Final verification save...")
+                            if self.doPresetsNeedSaving() {
+                                print("⚠️  BULLETPROOF BINDINGS: Final verification failed, force saving...")
+                                self.forceSavePresets()
+                            } else {
+                                print("✅ BULLETPROOF BINDINGS: All verification saves successful")
+                            }
+                        }
                     }
                 } else {
-                    print("⚠️  Not auto-saving default presets - user should save manually")
+                    print("⚠️  BULLETPROOF BINDINGS: Not auto-saving default presets - user should save manually")
                 }
             }
             .store(in: &cancellables)
         
-        // Also save when current preset changes, but be conservative
+        // Also save when current preset changes
         $currentPreset
             .sink { [weak self] _ in
-                print("🔄 Current preset changed, checking if should save...")
-                // Only auto-save if current presets are not defaults
+                print("🔄 BULLETPROOF BINDINGS: Current preset changed, checking if should save...")
+                // Always save if current presets are not defaults
                 if let currentPresets = self?.presets, currentPresets != Preset.defaults {
-                    print("💾 Auto-saving non-default presets...")
+                    print("💾 BULLETPROOF BINDINGS: Auto-saving non-default presets...")
                     self?.savePresets()
                 } else {
-                    print("⚠️  Not auto-saving default presets - user should save manually")
+                    print("⚠️  BULLETPROOF BINDINGS: Not auto-saving default presets - user should save manually")
                 }
             }
             .store(in: &cancellables)
@@ -1122,6 +1205,16 @@ class PresetHandler: ObservableObject {
                 return
             }
             
+            // Check if we have user-created presets flag set
+            let defaults = UserDefaults.standard
+            let hasUserCreatedPresets = defaults.bool(forKey: "hasUserCreatedPresets")
+            
+            if hasUserCreatedPresets {
+                print("✅ User has previously created presets - preserving them")
+                // Don't overwrite with defaults - keep what the user has
+                return
+            }
+            
             print("📂 No existing presets found, using defaults temporarily")
             DispatchQueue.main.async {
                 self.presets = Preset.defaults
@@ -1190,24 +1283,72 @@ class PresetHandler: ObservableObject {
         }
     }
     
-    /// Set whether to preserve manual changes when switching presets
-    func setPreserveManualChanges(_ preserve: Bool) {
+
+    
+    /// Recover presets from UserDefaults backup if file is corrupted
+    private func recoverPresetsFromBackup() -> [Preset]? {
+        print("🔄 Attempting to recover presets from UserDefaults backup...")
+        
         let defaults = UserDefaults.standard
-        defaults.set(preserve, forKey: "preserveManualChanges")
-        print("💾 Set preserve manual changes preference to: \(preserve)")
+        guard let backupData = defaults.data(forKey: "presets_backup_data") else {
+            print("❌ No backup data found in UserDefaults")
+            return nil
+        }
+        
+        guard let backupTimestamp = defaults.object(forKey: "presets_backup_timestamp") as? Date else {
+            print("❌ No backup timestamp found in UserDefaults")
+            return nil
+        }
+        
+        print("📅 Backup timestamp: \(backupTimestamp)")
+        
+        do {
+            let recoveredPresets = try JSONDecoder().decode([Preset].self, from: backupData)
+            print("✅ Successfully recovered \(recoveredPresets.count) presets from backup")
+            
+            // Check if backup is recent (within last 24 hours)
+            let timeSinceBackup = Date().timeIntervalSince(backupTimestamp)
+            let oneDay: TimeInterval = 24 * 60 * 60
+            
+            if timeSinceBackup < oneDay {
+                print("✅ Backup is recent (\(Int(timeSinceBackup/3600)) hours old)")
+                return recoveredPresets
+            } else {
+                print("⚠️  Backup is old (\(Int(timeSinceBackup/3600)) hours old) - may be outdated")
+                // Still return it, but warn the user
+                return recoveredPresets
+            }
+        } catch {
+            print("❌ Failed to decode backup data: \(error)")
+            return nil
+        }
     }
     
-    /// Get whether manual changes should be preserved
-    func shouldPreserveManualChanges() -> Bool {
-        let defaults = UserDefaults.standard
-        return defaults.bool(forKey: "preserveManualChanges")
-    }
-    
-    /// Toggle the preserve manual changes preference
-    func togglePreserveManualChanges() -> Bool {
-        let current = shouldPreserveManualChanges()
-        setPreserveManualChanges(!current)
-        return !current
+    /// Start periodic save mechanism for ultimate protection
+    private func startPeriodicSave() {
+        print("🔄 BULLETPROOF PERIODIC: Starting periodic save mechanism...")
+        
+        // Save every 5 seconds if presets need saving
+        Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            
+            if self.doPresetsNeedSaving() && self.presets != Preset.defaults {
+                print("💾 BULLETPROOF PERIODIC: Periodic save triggered...")
+                self.savePresets()
+            }
+        }
+        
+        // Also save every 30 seconds regardless (for ultimate protection)
+        Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            
+            if self.presets != Preset.defaults {
+                print("💾 BULLETPROOF PERIODIC: Ultimate protection save triggered...")
+                self.savePresets()
+            }
+        }
+        
+        print("✅ BULLETPROOF PERIODIC: Periodic save mechanism started")
     }
     
     /// Get diagnostic information about the current presets state

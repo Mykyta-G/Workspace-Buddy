@@ -60,26 +60,10 @@
       },
       {
         "comment": "",
-        "key": "Keeps your app positions",
-        "location": {
-          "startingColumn": 26,
-          "startingLine": 248
-        }
-      },
-      {
-        "comment": "",
-        "key": "Preserve Manual Changes",
-        "location": {
-          "startingColumn": 28,
-          "startingLine": 240
-        }
-      },
-      {
-        "comment": "",
         "key": "Save",
         "location": {
           "startingColumn": 34,
-          "startingLine": 262
+          "startingLine": 246
         }
       },
       {
@@ -87,7 +71,7 @@
         "key": "Active: %@",
         "location": {
           "startingColumn": 22,
-          "startingLine": 287
+          "startingLine": 271
         }
       },
       {
@@ -95,7 +79,7 @@
         "key": "Add New Preset",
         "location": {
           "startingColumn": 22,
-          "startingLine": 348
+          "startingLine": 332
         }
       },
       {
@@ -103,7 +87,7 @@
         "key": "Create New Preset",
         "location": {
           "startingColumn": 22,
-          "startingLine": 382
+          "startingLine": 366
         }
       },
       {
@@ -111,7 +95,7 @@
         "key": "Close previous apps when switching",
         "location": {
           "startingColumn": 24,
-          "startingLine": 511
+          "startingLine": 495
         }
       },
       {
@@ -119,7 +103,7 @@
         "key": "Preset Name",
         "location": {
           "startingColumn": 30,
-          "startingLine": 395
+          "startingLine": 379
         }
       },
       {
@@ -127,12 +111,36 @@
         "key": "Enter preset name",
         "location": {
           "startingColumn": 35,
-          "startingLine": 398
+          "startingLine": 382
         }
       },
       {
         "comment": "",
         "key": "Description",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 388
+        }
+      },
+      {
+        "comment": "",
+        "key": "What is this preset for?",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 391
+        }
+      },
+      {
+        "comment": "",
+        "key": "Applications",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 400
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld apps",
         "location": {
           "startingColumn": 30,
           "startingLine": 404
@@ -140,34 +148,10 @@
       },
       {
         "comment": "",
-        "key": "What is this preset for?",
-        "location": {
-          "startingColumn": 35,
-          "startingLine": 407
-        }
-      },
-      {
-        "comment": "",
-        "key": "Applications",
-        "location": {
-          "startingColumn": 30,
-          "startingLine": 416
-        }
-      },
-      {
-        "comment": "",
-        "key": "%lld apps",
-        "location": {
-          "startingColumn": 30,
-          "startingLine": 420
-        }
-      },
-      {
-        "comment": "",
         "key": "Search for app...",
         "location": {
           "startingColumn": 35,
-          "startingLine": 427
+          "startingLine": 411
         }
       },
       {
@@ -175,7 +159,7 @@
         "key": "Add",
         "location": {
           "startingColumn": 32,
-          "startingLine": 436
+          "startingLine": 420
         }
       },
       {
@@ -183,7 +167,7 @@
         "key": "Found apps:",
         "location": {
           "startingColumn": 34,
-          "startingLine": 450
+          "startingLine": 434
         }
       },
       {
@@ -191,7 +175,7 @@
         "key": "Cancel",
         "location": {
           "startingColumn": 24,
-          "startingLine": 519
+          "startingLine": 503
         }
       },
       {
@@ -199,7 +183,7 @@
         "key": "Create Preset",
         "location": {
           "startingColumn": 24,
-          "startingLine": 528
+          "startingLine": 512
         }
       },
       {
@@ -207,7 +191,7 @@
         "key": "Choose Icon",
         "location": {
           "startingColumn": 22,
-          "startingLine": 555
+          "startingLine": 539
         }
       },
       {
@@ -215,7 +199,7 @@
         "key": "Cancel",
         "location": {
           "startingColumn": 24,
-          "startingLine": 612
+          "startingLine": 596
         }
       },
       {
@@ -223,7 +207,7 @@
         "key": "Edit Preset",
         "location": {
           "startingColumn": 22,
-          "startingLine": 657
+          "startingLine": 641
         }
       },
       {
@@ -231,7 +215,7 @@
         "key": "Close previous apps when switching",
         "location": {
           "startingColumn": 24,
-          "startingLine": 786
+          "startingLine": 770
         }
       },
       {
@@ -239,7 +223,7 @@
         "key": "Preset Name",
         "location": {
           "startingColumn": 30,
-          "startingLine": 670
+          "startingLine": 654
         }
       },
       {
@@ -247,7 +231,7 @@
         "key": "Enter preset name",
         "location": {
           "startingColumn": 35,
-          "startingLine": 673
+          "startingLine": 657
         }
       },
       {
@@ -255,7 +239,7 @@
         "key": "Description",
         "location": {
           "startingColumn": 30,
-          "startingLine": 679
+          "startingLine": 663
         }
       },
       {
@@ -263,7 +247,7 @@
         "key": "What is this preset for?",
         "location": {
           "startingColumn": 35,
-          "startingLine": 682
+          "startingLine": 666
         }
       },
       {
@@ -271,7 +255,7 @@
         "key": "Applications",
         "location": {
           "startingColumn": 30,
-          "startingLine": 691
+          "startingLine": 675
         }
       },
       {
@@ -279,7 +263,7 @@
         "key": "%lld apps",
         "location": {
           "startingColumn": 30,
-          "startingLine": 695
+          "startingLine": 679
         }
       },
       {
@@ -287,7 +271,7 @@
         "key": "Search for app...",
         "location": {
           "startingColumn": 35,
-          "startingLine": 702
+          "startingLine": 686
         }
       },
       {
@@ -295,7 +279,7 @@
         "key": "Add",
         "location": {
           "startingColumn": 32,
-          "startingLine": 711
+          "startingLine": 695
         }
       },
       {
@@ -303,7 +287,7 @@
         "key": "Found apps:",
         "location": {
           "startingColumn": 34,
-          "startingLine": 725
+          "startingLine": 709
         }
       },
       {
@@ -311,7 +295,7 @@
         "key": "Cancel",
         "location": {
           "startingColumn": 24,
-          "startingLine": 794
+          "startingLine": 778
         }
       },
       {
@@ -319,7 +303,7 @@
         "key": "Save Changes",
         "location": {
           "startingColumn": 24,
-          "startingLine": 803
+          "startingLine": 787
         }
       },
       {
@@ -327,7 +311,7 @@
         "key": "Preset not found",
         "location": {
           "startingColumn": 18,
-          "startingLine": 1243
+          "startingLine": 1227
         }
       },
       {
@@ -335,7 +319,7 @@
         "key": "ACTIVE",
         "location": {
           "startingColumn": 34,
-          "startingLine": 983
+          "startingLine": 967
         }
       },
       {
@@ -343,7 +327,7 @@
         "key": "Current",
         "location": {
           "startingColumn": 48,
-          "startingLine": 1015
+          "startingLine": 999
         }
       },
       {
@@ -351,7 +335,7 @@
         "key": "Switch",
         "location": {
           "startingColumn": 60,
-          "startingLine": 1015
+          "startingLine": 999
         }
       },
       {
@@ -359,7 +343,7 @@
         "key": "Applications",
         "location": {
           "startingColumn": 38,
-          "startingLine": 1040
+          "startingLine": 1024
         }
       },
       {
@@ -367,7 +351,7 @@
         "key": "%lld apps",
         "location": {
           "startingColumn": 38,
-          "startingLine": 1045
+          "startingLine": 1029
         }
       },
       {
@@ -375,7 +359,7 @@
         "key": "No websites",
         "location": {
           "startingColumn": 82,
-          "startingLine": 1089
+          "startingLine": 1073
         }
       },
       {
@@ -383,7 +367,7 @@
         "key": "%lld website%@",
         "location": {
           "startingColumn": 98,
-          "startingLine": 1089
+          "startingLine": 1073
         }
       },
       {
@@ -391,7 +375,7 @@
         "key": "Search for app...",
         "location": {
           "startingColumn": 43,
-          "startingLine": 1175
+          "startingLine": 1159
         }
       },
       {
@@ -399,7 +383,7 @@
         "key": "Add",
         "location": {
           "startingColumn": 40,
-          "startingLine": 1185
+          "startingLine": 1169
         }
       },
       {
@@ -407,7 +391,7 @@
         "key": "Found apps:",
         "location": {
           "startingColumn": 42,
-          "startingLine": 1200
+          "startingLine": 1184
         }
       },
       {
@@ -415,7 +399,7 @@
         "key": "No websites configured",
         "location": {
           "startingColumn": 22,
-          "startingLine": 1337
+          "startingLine": 1321
         }
       },
       {
@@ -423,7 +407,7 @@
         "key": "Websites",
         "location": {
           "startingColumn": 22,
-          "startingLine": 1289
+          "startingLine": 1273
         }
       },
       {
@@ -431,7 +415,7 @@
         "key": "Cancel",
         "location": {
           "startingColumn": 48,
-          "startingLine": 1300
+          "startingLine": 1284
         }
       },
       {
@@ -439,7 +423,7 @@
         "key": "Add",
         "location": {
           "startingColumn": 59,
-          "startingLine": 1300
+          "startingLine": 1284
         }
       },
       {
@@ -447,7 +431,7 @@
         "key": "Add Website",
         "location": {
           "startingColumn": 28,
-          "startingLine": 1323
+          "startingLine": 1307
         }
       },
       {
@@ -455,7 +439,7 @@
         "key": "https://example.com",
         "location": {
           "startingColumn": 35,
-          "startingLine": 1313
+          "startingLine": 1297
         }
       },
       {
@@ -463,7 +447,7 @@
         "key": "Title (optional)",
         "location": {
           "startingColumn": 35,
-          "startingLine": 1317
+          "startingLine": 1301
         }
       }
     ]

@@ -1,9 +1,9 @@
 "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/Workspace-Buddy-Source/ContentView.swift":
-  dependencies: "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace-Buddy-master.d"
-  swiftdoc: "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace_Buddy.swiftdoc"
+  swiftsourceinfo: "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace_Buddy.swiftsourceinfo"
   swiftmodule: "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace_Buddy.swiftmodule"
-  diagnostics: "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace-Buddy-master.dia"
   objc-header: "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace_Buddy-Swift.h"
   const-values: "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace-Buddy-master.swiftconstvalues"
   abi-baseline-json: "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace_Buddy.abi.json"
-  swiftsourceinfo: "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace_Buddy.swiftsourceinfo"
+  dependencies: "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace-Buddy-master.d"
+  diagnostics: "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace-Buddy-master.dia"
+  swiftdoc: "/Users/mykytagrogul/Documents/GitHub/Workspace-Buddy/build/Build/Intermediates.noindex/Workspace-Buddy.build/Release/Workspace-Buddy.build/Objects-normal/x86_64/Workspace_Buddy.swiftdoc"

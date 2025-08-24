@@ -76,13 +76,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         let accessEnabled = checkAccessibilityPermissions()
         logger.info("Accessibility enabled: \(accessEnabled)")
         
-        // If accessibility is not enabled, show a helpful message
-        if !accessEnabled {
+        // Only show permission alert if we haven't asked before or if permissions were revoked
+        let defaults = UserDefaults.standard
+        let hasAskedForPermissions = defaults.bool(forKey: "hasAskedForPermissions")
+        let permissionsWereGranted = defaults.bool(forKey: "accessibilityPermissionsGranted")
+        
+        if !accessEnabled && (!hasAskedForPermissions || permissionsWereGranted) {
             logger.warning("⚠️ Accessibility permissions not granted - login item registration may fail")
             // Show a helpful alert about permissions
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
                 self?.showAccessibilityPermissionAlert()
             }
+        } else if !accessEnabled && hasAskedForPermissions && !permissionsWereGranted {
+            logger.info("ℹ️ User previously declined accessibility permissions - not showing alert again")
         }
         
         // Set as regular app so it appears in Launchpad and Applications
@@ -144,11 +150,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         DispatchQueue.global(qos: .utility).async { [weak self] in
             if let self = self {
                 logger.info("🔄 Checking startup registration status...")
-                if !self.isRegisteredForLogin() {
+                
+                // Check if we've already tried to register recently to avoid repeated attempts
+                let defaults = UserDefaults.standard
+                let lastRegistrationAttempt = defaults.object(forKey: "lastStartupRegistrationAttempt") as? Date
+                let timeSinceLastAttempt = lastRegistrationAttempt.map { Date().timeIntervalSince($0) } ?? 0
+                let oneHour: TimeInterval = 60 * 60
+                
+                if !self.isRegisteredForLogin() && timeSinceLastAttempt > oneHour {
                     logger.info("📝 App not registered for startup - attempting registration...")
+                    defaults.set(Date(), forKey: "lastStartupRegistrationAttempt")
                     self.registerForLogin()
+                } else if !self.isRegisteredForLogin() && timeSinceLastAttempt <= oneHour {
+                    logger.info("⏰ Startup registration attempted recently, waiting before retry...")
                 } else {
-                    logger.info("✅ App is already registered for login")
+                    logger.info("✅ App is already registered for startup")
                 }
             }
         }
@@ -273,6 +289,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         alert.informativeText = "Workspace-Buddy needs accessibility permissions to automatically start when you log in.\n\nTo enable this:\n1. Go to System Settings > Privacy & Security > Accessibility\n2. Click the lock icon and enter your password\n3. Add Workspace-Buddy to the list\n4. Restart the app"
         alert.addButton(withTitle: "Open System Settings")
         alert.addButton(withTitle: "Not Now")
+        alert.addButton(withTitle: "Don't Ask Again")
         
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
@@ -288,6 +305,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             if let scriptObject = NSAppleScript(source: script) {
                 scriptObject.executeAndReturnError(nil)
             }
+        } else if response == .alertThirdButtonReturn {
+            // User clicked "Don't Ask Again"
+            let defaults = UserDefaults.standard
+            defaults.set(true, forKey: "userDeclinedStartupRegistration")
+            logger.info("ℹ️ User declined startup registration permanently")
         }
     }
     
@@ -501,6 +523,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     
     private func registerForLogin() {
         logger.info("🔄 Starting bulletproof startup registration...")
+        
+        // Check if user has explicitly declined startup registration
+        let defaults = UserDefaults.standard
+        let userDeclinedStartup = defaults.bool(forKey: "userDeclinedStartupRegistration")
+        if userDeclinedStartup {
+            logger.info("ℹ️ User has declined startup registration - not attempting again")
+            return
+        }
         
         // Get the actual app path (resolve symlinks)
         let appPath = Bundle.main.bundlePath

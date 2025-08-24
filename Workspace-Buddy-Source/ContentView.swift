@@ -235,22 +235,6 @@ struct ContentView: View {
                 
                 Spacer()
                 
-                // Preserve manual changes toggle
-                VStack(alignment: .trailing, spacing: 2) {
-                    Toggle("Preserve Manual Changes", isOn: Binding(
-                        get: { presetHandler.shouldPreserveManualChanges() },
-                        set: { presetHandler.setPreserveManualChanges($0) }
-                    ))
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .font(.caption)
-                    
-                    Text("Keeps your app positions")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-                .frame(width: 200)
-                
                 // Save button - only show if presets need saving
                 if presetHandler.doPresetsNeedSaving() {
                     Button(action: {
