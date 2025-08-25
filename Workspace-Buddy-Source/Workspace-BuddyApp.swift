@@ -125,7 +125,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         popover = NSPopover()
         popover?.contentSize = NSSize(width: 300, height: 400)
         popover?.behavior = .transient  // Allow closing by clicking outside
-        popover?.contentViewController = NSHostingController(rootView: ContentView().environmentObject(PresetHandler()))
+        popover?.contentViewController = NSHostingController(rootView: ContentView().environmentObject(PresetHandler.shared))
         
         // Set the popover delegate to handle window management
         popover?.delegate = self
@@ -133,17 +133,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         // Set up global event monitor to detect clicks outside the popover
         setupGlobalEventMonitor()
         
-        // Initialize preset handler
-        presetHandler = PresetHandler()
+        // Initialize preset handler using singleton
+        presetHandler = PresetHandler.shared
         
         // Ensure presets are properly loaded and saved on first launch (only if needed)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             self?.checkAndLoadPresetsIfNeeded()
+            
+            // Also force migrate any old-format presets to prevent overwrites
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.presetHandler?.forceMigrateCurrentPresets()
+            }
         }
         
         // Monitor startup success and auto-repair if needed
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
             self?.monitorStartupSuccess()
+        }
+        
+        // Check for old format presets and auto-migrate to prevent overwrites
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+            self?.checkAndAutoMigrateOldFormatPresets()
         }
         
         // Register the app to start at login (only if not already registered) - do this asynchronously
@@ -212,10 +222,34 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             logger.info("✅ App has user-created presets - preserving them")
             presetHandler?.forceRefreshPresets()
         } else {
-            // Not first time and no user presets - be conservative about migration
-            logger.info("✅ App has been initialized before - loading existing presets conservatively")
-            // Only do migration if explicitly requested, not automatically
-            presetHandler?.forceRefreshPresets()
+            // Not first time and no user presets - check if we actually have presets file
+            logger.info("✅ App has been initialized before - checking for existing presets file...")
+            
+            // Check if presets file exists and has content
+            if let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+                let presetsFileURL = documentsPath.appendingPathComponent("presets.json")
+                if FileManager.default.fileExists(atPath: presetsFileURL.path) {
+                    logger.info("✅ Found existing presets file - loading and preserving user presets")
+                    // We have a presets file, so load it and mark as user-created
+                    presetHandler?.forceRefreshPresets()
+                    
+                    // Mark that we have user-created presets to prevent future overwrites
+                    defaults.set(true, forKey: "hasUserCreatedPresets")
+                    defaults.set(Date(), forKey: "lastPresetSaveDate")
+                    logger.info("✅ Marked existing presets as user-created to prevent future overwrites")
+                } else {
+                    logger.info("📂 No presets file found - using defaults temporarily")
+                    presetHandler?.forceRefreshPresets()
+                }
+            } else {
+                logger.info("✅ App has been initialized before - loading existing presets conservatively")
+                presetHandler?.forceRefreshPresets()
+            }
+        }
+        
+        // CRITICAL FIX: Always check for existing presets file and preserve user changes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.forcePreserveExistingPresets()
         }
     }
     
@@ -1282,6 +1316,31 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         }
     }
     
+    /// Force migrate current presets to prevent overwrites (called from menu)
+    @objc private func forceMigrateCurrentPresets() {
+        logger.info("🔄 User requested force migration of current presets")
+        
+        let alert = NSAlert()
+        alert.messageText = "Force Migrate Current Presets"
+        alert.informativeText = "This will migrate your current presets from the old format to the new format to prevent them from being overwritten on reboot. Your presets will be preserved."
+        alert.addButton(withTitle: "Migrate Now")
+        alert.addButton(withTitle: "Cancel")
+        alert.alertStyle = .informational
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            // Trigger the force migration
+            presetHandler?.forceMigrateCurrentPresets()
+            
+            // Show confirmation
+            let confirmAlert = NSAlert()
+            confirmAlert.messageText = "Migration Complete"
+            confirmAlert.informativeText = "Your presets have been migrated to the new format. They will no longer be overwritten on reboot."
+            confirmAlert.addButton(withTitle: "OK")
+            confirmAlert.runModal()
+        }
+    }
+    
     /// Show startup status and repair options (called from menu)
     @objc private func showStartupStatusAndRepair() {
         logger.info("🔍 User requested startup status and repair")
@@ -1673,6 +1732,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         resetPresetsItem.target = self
         menu.addItem(resetPresetsItem)
         
+        // Add "Force Migrate Current Presets" option
+        let forceMigrateItem = NSMenuItem(title: "Force Migrate Current Presets", action: #selector(forceMigrateCurrentPresets), keyEquivalent: "")
+        forceMigrateItem.target = self
+        menu.addItem(forceMigrateItem)
+        
         // Add "Show Diagnostic Info" option
         let diagnosticItem = NSMenuItem(title: "Show Diagnostic Info", action: #selector(showDiagnosticInfo), keyEquivalent: "")
         diagnosticItem.target = self
@@ -1941,6 +2005,81 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                     logger.warning("⚠️ Could not verify/fix \(plistPath): \(error)")
                 }
             }
+        }
+    }
+    
+    /// Force preserve existing presets to prevent defaults from overwriting user changes
+    private func forcePreserveExistingPresets() {
+        logger.info("🔒 Force preserving existing presets to prevent overwrites...")
+        
+        // Check if we have a presets file
+        if let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            let presetsFileURL = documentsPath.appendingPathComponent("presets.json")
+            
+            if FileManager.default.fileExists(atPath: presetsFileURL.path) {
+                logger.info("✅ Found existing presets file - ensuring user changes are preserved")
+                
+                // Force the preset handler to load and preserve existing presets
+                presetHandler?.forceMigrateCurrentPresets()
+                
+                // Mark that we have user-created presets to prevent future overwrites
+                let defaults = UserDefaults.standard
+                defaults.set(true, forKey: "hasUserCreatedPresets")
+                defaults.set(Date(), forKey: "lastPresetSaveDate")
+                logger.info("✅ Marked existing presets as user-created to prevent future overwrites")
+                
+                // Also force a save to ensure nothing is lost
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+                    self?.presetHandler?.forceSavePresets()
+                }
+            } else {
+                logger.info("📂 No presets file found - nothing to preserve")
+            }
+        } else {
+            logger.warning("⚠️ Could not access documents directory for preset preservation")
+        }
+    }
+    
+    /// Check for old format presets and auto-migrate to prevent overwrites
+    private func checkAndAutoMigrateOldFormatPresets() {
+        logger.info("🔍 Checking for old format presets to prevent overwrites...")
+        
+        // Check if we have a presets file in old format
+        if let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            let presetsFileURL = documentsPath.appendingPathComponent("presets.json")
+            
+            if FileManager.default.fileExists(atPath: presetsFileURL.path) {
+                do {
+                    let data = try Data(contentsOf: presetsFileURL)
+                    
+                    // Try to decode as new format
+                    do {
+                        let _ = try JSONDecoder().decode([Preset].self, from: data)
+                        logger.info("✅ Presets file is already in new format, no migration needed")
+                        return
+                    } catch {
+                        logger.warning("⚠️ Detected old format presets file - auto-migrating to prevent overwrites")
+                        
+                        // Auto-migrate to prevent future overwrites
+                        presetHandler?.forceMigrateCurrentPresets()
+                        
+                        // Show user notification about the migration
+                        let notification = NSUserNotification()
+                        notification.title = "Presets Migrated Successfully"
+                        notification.informativeText = "Your presets have been automatically migrated to prevent them from being overwritten on reboot."
+                        notification.soundName = NSUserNotificationDefaultSoundName
+                        NSUserNotificationCenter.default.deliver(notification)
+                        
+                        logger.info("✅ Auto-migration completed successfully")
+                    }
+                } catch {
+                    logger.error("❌ Error reading presets file for format check: \(error)")
+                }
+            } else {
+                logger.info("📂 No presets file found, nothing to migrate")
+            }
+        } else {
+            logger.warning("⚠️ Could not access documents directory for format check")
         }
     }
 }

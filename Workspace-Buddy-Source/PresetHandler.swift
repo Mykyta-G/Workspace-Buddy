@@ -6,6 +6,9 @@ import ApplicationServices
 
 /// Manages workspace presets and handles application launching/closing
 class PresetHandler: ObservableObject {
+    // CRITICAL FIX: Singleton pattern to prevent multiple instances
+    static let shared = PresetHandler()
+    
     @Published var presets: [Preset] = []
     @Published var currentPreset: Preset?
     @Published var isLoading = false
@@ -14,8 +17,9 @@ class PresetHandler: ObservableObject {
     private let fileManager = FileManager.default
     private var cancellables = Set<AnyCancellable>()
     
-    init() {
-        print("🚀 BULLETPROOF INIT: Initializing PresetHandler...")
+    // CRITICAL FIX: Private init to enforce singleton
+    private init() {
+        print("🚀 BULLETPROOF INIT: Initializing PresetHandler (Singleton)...")
         
         // Load presets from storage
         loadPresets()
@@ -793,12 +797,27 @@ class PresetHandler: ObservableObject {
                 // If new format fails, try to migrate from old format
                 print("🔄 Attempting to migrate from old preset format...")
                 if let migratedPresets = migrateFromOldFormat(data: data) {
-                    // Save the migrated presets in new format
-                    print("✅ Migration successful, saving migrated presets")
+                    // Save the migrated presets in new format IMMEDIATELY to prevent future overwrites
+                    print("✅ Migration successful, saving migrated presets to new format")
                     savePresetsToFile(migratedPresets)
+                    
+                    // Also mark that we have user-created presets to prevent future overwrites
+                    let defaults = UserDefaults.standard
+                    defaults.set(true, forKey: "hasUserCreatedPresets")
+                    defaults.set(Date(), forKey: "lastPresetSaveDate")
+                    print("✅ Marked presets as user-created to prevent future overwrites")
+                    
                     return migratedPresets
                 }
-                print("❌ Migration failed, will use default presets")
+                
+                // CRITICAL FIX: If migration fails, DON'T return nil - try to preserve what we can
+                print("⚠️  Migration failed, but attempting to preserve existing presets...")
+                if let preservedPresets = preserveExistingPresetsFromOldFormat(data: data) {
+                    print("✅ Successfully preserved existing presets despite migration failure")
+                    return preservedPresets
+                }
+                
+                print("❌ Migration and preservation both failed, will use default presets")
                 // Don't throw error here, just return nil to use defaults
                 return nil
             }
@@ -810,6 +829,56 @@ class PresetHandler: ObservableObject {
         }
     }
     
+    /// Preserve existing presets from old format even when migration fails
+    private func preserveExistingPresetsFromOldFormat(data: Data) -> [Preset]? {
+        print("🔄 Attempting to preserve existing presets from old format...")
+        
+        do {
+            // Try to parse as raw JSON to extract what we can
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                var preservedPresets: [Preset] = []
+                
+                for (name, presetData) in json {
+                    if let presetDict = presetData as? [String: Any],
+                       let description = presetDict["description"] as? String,
+                       let appsArray = presetDict["apps"] as? [String],
+                       let closePrevious = presetDict["close_previous"] as? Bool {
+                        
+                        print("Preserving preset: \(name) with \(appsArray.count) apps")
+                        let apps = appsArray.map { AppWithPosition(name: $0) }
+                        let newPreset = Preset(
+                            name: name,
+                            description: description,
+                            apps: apps,
+                            closePrevious: closePrevious,
+                            icon: getIconForPreset(name: name)
+                        )
+                        preservedPresets.append(newPreset)
+                    }
+                }
+                
+                if !preservedPresets.isEmpty {
+                    print("✅ Successfully preserved \(preservedPresets.count) presets")
+                    
+                    // Immediately save these preserved presets in new format
+                    savePresetsToFile(preservedPresets)
+                    
+                    // Mark as user-created to prevent future overwrites
+                    let defaults = UserDefaults.standard
+                    defaults.set(true, forKey: "hasUserCreatedPresets")
+                    defaults.set(Date(), forKey: "lastPresetSaveDate")
+                    print("✅ Marked preserved presets as user-created to prevent future overwrites")
+                    
+                    return preservedPresets
+                }
+            }
+        } catch {
+            print("❌ Failed to preserve existing presets: \(error)")
+        }
+        
+        return nil
+    }
+
     /// Migrate from old preset format to new format
     private func migrateFromOldFormat(data: Data) -> [Preset]? {
         print("Attempting to migrate from old preset format...")
@@ -920,12 +989,23 @@ class PresetHandler: ObservableObject {
                 print("📁 Created directory: \(directory)")
             }
             
-            // Write to a temporary file first, then move it to avoid corruption
-            let tempURL = fileURL.appendingPathExtension("tmp")
+            // CRITICAL FIX: Use unique temporary filename to prevent conflicts
+            let uniqueTempName = "presets_\(UUID().uuidString).tmp"
+            let tempURL = fileURL.deletingLastPathComponent().appendingPathComponent(uniqueTempName)
+            
+            // Write to unique temporary file first
             try data.write(to: tempURL)
+            print("✅ Successfully wrote to temporary file: \(uniqueTempName)")
+            
+            // Remove existing file if it exists to prevent conflicts
+            if fileManager.fileExists(atPath: fileURL.path) {
+                try fileManager.removeItem(at: fileURL)
+                print("🗑️ Removed existing presets file to prevent conflicts")
+            }
             
             // Move the temporary file to the final location
             try fileManager.moveItem(at: tempURL, to: fileURL)
+            print("✅ Successfully moved temporary file to final location")
             
             print("✅ Successfully saved presets to file")
             
@@ -956,6 +1036,16 @@ class PresetHandler: ObservableObject {
             if fileManager.fileExists(atPath: tempURL.path) {
                 try? fileManager.removeItem(at: tempURL)
                 print("🧹 Cleaned up temporary file")
+            }
+            
+            // CRITICAL FALLBACK: Try direct write if move fails
+            print("🔄 Attempting direct write fallback...")
+            do {
+                let data = try JSONEncoder().encode(presets)
+                try data.write(to: fileURL)
+                print("✅ Fallback direct write successful")
+            } catch {
+                print("❌ Fallback direct write also failed: \(error)")
             }
         }
     }
@@ -1195,6 +1285,13 @@ class PresetHandler: ObservableObject {
             DispatchQueue.main.async {
                 self.presets = loadedPresets
             }
+            
+            // Mark that we have user-created presets to prevent future overwrites
+            let defaults = UserDefaults.standard
+            defaults.set(true, forKey: "hasUserCreatedPresets")
+            defaults.set(Date(), forKey: "lastPresetSaveDate")
+            print("✅ Marked existing presets as user-created to prevent future overwrites")
+            
         } else {
             print("📂 No existing presets file found, checking if we have presets in memory...")
             
@@ -1215,6 +1312,23 @@ class PresetHandler: ObservableObject {
                 return
             }
             
+            // CRITICAL FIX: Check if we have any existing presets file before using defaults
+            if hasExistingPresetsFile() {
+                print("⚠️  Found existing presets file - attempting to load instead of using defaults")
+                // Try to force load existing presets
+                if let existingPresets = forceLoadExistingPresets() {
+                    print("✅ Successfully loaded existing presets instead of defaults")
+                    DispatchQueue.main.async {
+                        self.presets = existingPresets
+                    }
+                    
+                    // Mark as user-created
+                    defaults.set(true, forKey: "hasUserCreatedPresets")
+                    defaults.set(Date(), forKey: "lastPresetSaveDate")
+                    return
+                }
+            }
+            
             print("📂 No existing presets found, using defaults temporarily")
             DispatchQueue.main.async {
                 self.presets = Preset.defaults
@@ -1224,6 +1338,60 @@ class PresetHandler: ObservableObject {
         }
     }
     
+    /// Force migrate current old-format presets to new format to prevent overwrites
+    func forceMigrateCurrentPresets() {
+        print("🔄 Force migrating current presets to prevent overwrites...")
+        
+        guard let documentsPath = getDocumentsDirectory() else {
+            print("❌ Could not get documents directory for migration")
+            return
+        }
+        
+        let fileURL = documentsPath.appendingPathComponent(presetsFile)
+        
+        // Check if file exists and is in old format
+        guard fileManager.fileExists(atPath: fileURL.path) else {
+            print("📂 No presets file exists, nothing to migrate")
+            return
+        }
+        
+        do {
+            let data = try Data(contentsOf: fileURL)
+            
+            // Try to decode as new format first
+            do {
+                let _ = try JSONDecoder().decode([Preset].self, from: data)
+                print("✅ File is already in new format, no migration needed")
+                return
+            } catch {
+                print("🔄 File is in old format, migrating to new format...")
+                
+                if let migratedPresets = migrateFromOldFormat(data: data) {
+                    // Save the migrated presets in new format
+                    print("✅ Migration successful, saving \(migratedPresets.count) presets in new format")
+                    savePresetsToFile(migratedPresets)
+                    
+                    // Update the current presets in memory
+                    DispatchQueue.main.async {
+                        self.presets = migratedPresets
+                    }
+                    
+                    // Mark that we have user-created presets to prevent future overwrites
+                    let defaults = UserDefaults.standard
+                    defaults.set(true, forKey: "hasUserCreatedPresets")
+                    defaults.set(Date(), forKey: "lastPresetSaveDate")
+                    print("✅ Marked migrated presets as user-created to prevent future overwrites")
+                    
+                    print("✅ Force migration completed successfully")
+                } else {
+                    print("❌ Migration failed, but preserving existing presets")
+                }
+            }
+        } catch {
+            print("❌ Error reading presets file for migration: \(error)")
+        }
+    }
+
     /// Check if presets need to be migrated without overwriting
     func checkMigrationNeeded() -> Bool {
         print("🔍 Checking if migration is needed...")
@@ -1416,5 +1584,49 @@ class PresetHandler: ObservableObject {
         info += "\n🎯 Current Active Preset: \(currentPreset?.name ?? "None")\n"
         
         return info
+    }
+    
+    /// Check if we have an existing presets file
+    private func hasExistingPresetsFile() -> Bool {
+        guard let documentsPath = getDocumentsDirectory() else { return false }
+        let fileURL = documentsPath.appendingPathComponent(presetsFile)
+        return fileManager.fileExists(atPath: fileURL.path)
+    }
+    
+    /// Force load existing presets even if they're in old format
+    private func forceLoadExistingPresets() -> [Preset]? {
+        print("🔄 Force loading existing presets...")
+        
+        guard let documentsPath = getDocumentsDirectory() else { return nil }
+        let fileURL = documentsPath.appendingPathComponent(presetsFile)
+        
+        do {
+            let data = try Data(contentsOf: fileURL)
+            
+            // Try new format first
+            if let presets = try? JSONDecoder().decode([Preset].self, from: data) {
+                print("✅ Successfully loaded existing presets in new format")
+                return presets
+            }
+            
+            // Try migration
+            if let migratedPresets = migrateFromOldFormat(data: data) {
+                print("✅ Successfully migrated and loaded existing presets")
+                return migratedPresets
+            }
+            
+            // Try preservation
+            if let preservedPresets = preserveExistingPresetsFromOldFormat(data: data) {
+                print("✅ Successfully preserved and loaded existing presets")
+                return preservedPresets
+            }
+            
+            print("❌ All loading methods failed")
+            return nil
+            
+        } catch {
+            print("❌ Error force loading existing presets: \(error)")
+            return nil
+        }
     }
 }

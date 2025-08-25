@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Main content view for the Mac Preset Handler app
 struct ContentView: View {
-    @StateObject private var presetHandler = PresetHandler()
+    @StateObject private var presetHandler = PresetHandler.shared
     @State private var showingAddPreset = false
     @State private var selectedPreset: Preset?
     @State private var showingDeleteAlert = false
