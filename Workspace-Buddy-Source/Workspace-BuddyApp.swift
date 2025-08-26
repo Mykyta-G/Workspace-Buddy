@@ -782,8 +782,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             <true/>
             <key>ProcessType</key>
             <string>Background</string>
-            <key>WorkingDirectory</key>
-            <string>\(appPath)/Contents</string>
             <key>EnvironmentVariables</key>
             <dict>
                 <key>PATH</key>
