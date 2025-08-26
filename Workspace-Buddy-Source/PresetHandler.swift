@@ -1177,6 +1177,17 @@ class PresetHandler: ObservableObject {
         
         return runningApps.filter { app in
             guard let appName = app.localizedName else { return false }
+            
+            // Don't include Workspace-Buddy itself
+            if appName.lowercased() == "workspace-buddy" || appName.lowercased() == "workspace buddy" {
+                return false
+            }
+            
+            // Don't include the current app bundle
+            if app.bundleIdentifier == Bundle.main.bundleIdentifier {
+                return false
+            }
+            
             return !presetAppNames.contains(appName.lowercased()) && 
                    app.activationPolicy == .regular // Only include regular apps, not system services
         }

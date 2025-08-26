@@ -1623,11 +1623,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         if !isRegisteredForLogin() {
             logger.warning("⚠️ Startup monitoring detected registration failure - auto-repairing")
             
-            // Show user notification
+            // Show user notification (silent)
             let notification = NSUserNotification()
             notification.title = "Workspace-Buddy Startup Issue Detected"
             notification.informativeText = "The app will attempt to fix this automatically. You can also check 'Startup Status & Repair' in the menu."
-            notification.soundName = NSUserNotificationDefaultSoundName
+            // No sound - silent notification
             NSUserNotificationCenter.default.deliver(notification)
             
             // Auto-repair
@@ -1842,6 +1842,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             guard let appName = app.localizedName else { return false }
             return app.activationPolicy == .regular && 
                    app != NSApp && 
+                   app.bundleIdentifier != Bundle.main.bundleIdentifier &&
                    !currentPreset.apps.contains { $0.name.lowercased() == appName.lowercased() }
         }
         
@@ -2094,11 +2095,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                         // Auto-migrate to prevent future overwrites
                         presetHandler?.forceMigrateCurrentPresets()
                         
-                        // Show user notification about the migration
+                        // Show user notification about the migration (silent)
                         let notification = NSUserNotification()
                         notification.title = "Presets Migrated Successfully"
                         notification.informativeText = "Your presets have been automatically migrated to prevent them from being overwritten on reboot."
-                        notification.soundName = NSUserNotificationDefaultSoundName
+                        // No sound - silent notification
                         NSUserNotificationCenter.default.deliver(notification)
                         
                         logger.info("✅ Auto-migration completed successfully")
