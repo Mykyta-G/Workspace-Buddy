@@ -69,6 +69,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         // Clean up any existing log files that might have been created
         cleanupExistingLogFiles()
         
+        // Clean up existing startup scripts to prevent Finder windows
+        cleanupExistingStartupScripts()
+        
         // Verify and fix LaunchAgent files to prevent log file creation
         verifyAndFixLaunchAgentFiles()
         
@@ -869,8 +872,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         
         # Check if app is already running
         if ! pgrep -f "Workspace-Buddy" > /dev/null; then
-            # Launch the app (use -a flag to prevent Finder from opening)
-            open -a "\(appPath)"
+            # Launch the app using bundle name to prevent Finder from opening
+            open -a "Workspace-Buddy"
         fi
         """
         
@@ -937,7 +940,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         #!/bin/bash
         # Emergency Workspace-Buddy Startup
         sleep 15
-        open -a "\(appPath)"
+        open -a "Workspace-Buddy"
         """
         
         let scriptPath = "~/startup-workspacebuddy.sh"
@@ -1948,6 +1951,40 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                     logger.info("✅ Removed log file: \(logFile)")
                 } catch {
                     logger.warning("⚠️ Could not remove log file \(logFile): \(error)")
+                }
+            }
+        }
+    }
+    
+    /// Clean up and recreate any existing startup scripts to prevent Finder windows
+    private func cleanupExistingStartupScripts() {
+        logger.info("🧹 Cleaning up existing startup scripts to prevent Finder windows...")
+        
+        let startupScripts = [
+            "~/Library/LaunchAgents/workspacebuddy-startup.sh",
+            "~/startup-workspacebuddy.sh"
+        ]
+        
+        for scriptPath in startupScripts {
+            let expandedPath = (scriptPath as NSString).expandingTildeInPath
+            
+            if FileManager.default.fileExists(atPath: expandedPath) {
+                do {
+                    // Read the script content to check if it uses the old format
+                    let scriptContent = try String(contentsOfFile: expandedPath, encoding: .utf8)
+                    
+                    if scriptContent.contains("open -a \"") && scriptContent.contains("/") {
+                        logger.info("⚠️ Found startup script with old format - removing: \(scriptPath)")
+                        try FileManager.default.removeItem(atPath: expandedPath)
+                        
+                        // Recreate with new format if it's the main startup script
+                        if scriptPath.contains("workspacebuddy-startup.sh") {
+                            logger.info("🔄 Recreating startup script with new format")
+                            _ = createManualStartupScript(appPath: Bundle.main.bundlePath)
+                        }
+                    }
+                } catch {
+                    logger.warning("⚠️ Could not read/update startup script \(scriptPath): \(error)")
                 }
             }
         }
