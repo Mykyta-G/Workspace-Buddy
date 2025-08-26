@@ -272,15 +272,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         if !hasLaunchedBefore {
             // First launch - show startup recommendation
             DispatchQueue.main.async { [weak self] in
-                self?.showRunningConfirmation()
+                self?.showStartupRecommendation()
             }
             defaults.set(true, forKey: "hasLaunchedBefore")
-        } else {
-            // Not first launch - show simple confirmation
-            DispatchQueue.main.async { [weak self] in
-                self?.showRunningConfirmation()
-            }
         }
+        // Don't show alerts on subsequent launches - just run silently
     }
     
     private func showStartupRecommendation() {
@@ -875,8 +871,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         
         # Check if app is already running
         if ! pgrep -f "Workspace-Buddy" > /dev/null; then
-            # Launch the app
-            open "\(appPath)"
+            # Launch the app (use -a flag to prevent Finder from opening)
+            open -a "\(appPath)"
         fi
         """
         
@@ -943,7 +939,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         #!/bin/bash
         # Emergency Workspace-Buddy Startup
         sleep 15
-        open "\(appPath)"
+        open -a "\(appPath)"
         """
         
         let scriptPath = "~/startup-workspacebuddy.sh"
