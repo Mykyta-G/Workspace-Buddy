@@ -1623,12 +1623,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         if !isRegisteredForLogin() {
             logger.warning("⚠️ Startup monitoring detected registration failure - auto-repairing")
             
-            // Show user notification (silent)
-            let notification = NSUserNotification()
-            notification.title = "Workspace-Buddy Startup Issue Detected"
-            notification.informativeText = "The app will attempt to fix this automatically. You can also check 'Startup Status & Repair' in the menu."
-            // No sound - silent notification
-            NSUserNotificationCenter.default.deliver(notification)
+            // Log the issue instead of showing notification (no sound)
+            logger.warning("⚠️ Startup issue detected - auto-repairing silently")I w
             
             // Auto-repair
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
@@ -2095,12 +2091,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                         // Auto-migrate to prevent future overwrites
                         presetHandler?.forceMigrateCurrentPresets()
                         
-                        // Show user notification about the migration (silent)
-                        let notification = NSUserNotification()
-                        notification.title = "Presets Migrated Successfully"
-                        notification.informativeText = "Your presets have been automatically migrated to prevent them from being overwritten on reboot."
-                        // No sound - silent notification
-                        NSUserNotificationCenter.default.deliver(notification)
+                        // Log the migration instead of showing notification (no sound)
+                        logger.info("✅ Presets auto-migrated successfully - no notification shown")
                         
                         logger.info("✅ Auto-migration completed successfully")
                     }
