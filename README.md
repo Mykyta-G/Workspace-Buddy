@@ -2,6 +2,35 @@
 
 A powerful macOS menu bar application for managing workspace presets and applications. Create custom workspaces, switch between them seamlessly, and maintain your productivity workflow.
 
+## 🔒 Security & Permissions
+
+### ⚠️ Important: First Launch Setup
+
+Since this app is not code-signed with an Apple Developer certificate, macOS will block it by default. Here's how to enable it:
+
+#### Method 1: Right-Click to Open (Recommended)
+1. **Right-click** on `Workspace-Buddy.app` in your Applications folder
+2. Select **"Open"** from the context menu
+3. Click **"Open"** in the security dialog that appears
+4. The app will launch and work normally
+
+#### Method 2: System Preferences
+1. Go to **System Preferences** → **Security & Privacy** → **General**
+2. Look for a message about Workspace-Buddy being blocked
+3. Click **"Open Anyway"** next to the message
+4. Launch the app normally
+
+### Required Permissions
+The app will request these permissions on first launch:
+- **Menu Bar Access**: To display the preset manager in your menu bar
+- **Accessibility**: To manage and launch other applications
+- **Full Disk Access**: To discover installed applications
+
+Grant these permissions when prompted for full functionality.
+
+### Why This Happens
+This is normal behavior for apps without an Apple Developer certificate. macOS protects users by blocking unsigned applications, but you can safely allow this app to run.
+
 ## ✨ Features
 
 - **Custom Presets**: Create unlimited workspace presets (Work, Gaming, Study, etc.)
@@ -94,35 +123,6 @@ cd Mac-Preset-Handler
 ### Study Mode
 - **Research**: Safari (Canvas, Google Drive), Notes, Calendar
 - **Documentation**: Word, PDF readers, Reference apps
-
-## 🔒 Security & Permissions
-
-### ⚠️ Important: First Launch Setup
-
-Since this app is not code-signed with an Apple Developer certificate, macOS will block it by default. Here's how to enable it:
-
-#### Method 1: Right-Click to Open (Recommended)
-1. **Right-click** on `Workspace-Buddy.app` in your Applications folder
-2. Select **"Open"** from the context menu
-3. Click **"Open"** in the security dialog that appears
-4. The app will launch and work normally
-
-#### Method 2: System Preferences
-1. Go to **System Preferences** → **Security & Privacy** → **General**
-2. Look for a message about Workspace-Buddy being blocked
-3. Click **"Open Anyway"** next to the message
-4. Launch the app normally
-
-### Required Permissions
-The app will request these permissions on first launch:
-- **Menu Bar Access**: To display the preset manager in your menu bar
-- **Accessibility**: To manage and launch other applications
-- **Full Disk Access**: To discover installed applications
-
-Grant these permissions when prompted for full functionality.
-
-### Why This Happens
-This is normal behavior for apps without an Apple Developer certificate. macOS protects users by blocking unsigned applications, but you can safely allow this app to run.
 
 ## 🛠️ Development
 
