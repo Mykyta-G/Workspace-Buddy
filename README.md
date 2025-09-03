@@ -8,13 +8,6 @@ A powerful macOS menu bar application for managing workspace presets and applica
 
 Since this app is not code-signed with an Apple Developer certificate, macOS will block it by default. Here's how to enable it:
 
-#### Method 1: Right-Click to Open (Recommended)
-1. **Right-click** on `Workspace-Buddy.app` in your Applications folder
-2. Select **"Open"** from the context menu
-3. Click **"Open"** in the security dialog that appears
-4. The app will launch and work normally
-
-#### Method 2: System Preferences
 1. Go to **System Preferences** → **Security & Privacy** → **General**
 2. Look for a message about Workspace-Buddy being blocked
 3. Click **"Open Anyway"** next to the message
